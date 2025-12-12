@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Auto Shine</string>
+    <string name="app_name">Auto Light</string>
     <string name="settings">Settings</string>
     <string name="brightness_c">Brightness:</string>
     <string name="m_always">Always</string>
@@ -16,7 +16,7 @@
     <string name="sensor_c">Sensor:</string>
     <string name="save_settings">Save settings</string>
     <string name="cancel">Cancel</string>
-    <string name="permission_request">This app requires permission to control screen brightness.\nSelect \"Auto Shine\" and allow it to modify system settings.</string>
+    <string name="permission_request">This app requires permission to control screen brightness.\nSelect \"Auto Light\" and allow it to modify system settings.</string>
     <string name="dontkillmyapp_link" translatable="false"><a href="https://dontkillmyapp.com/">https://dontkillmyapp.com/</a></string>
     <string name="set_battery">Set app battery usage to \"unrestricted\"</string>
     <string name="request">Request</string>

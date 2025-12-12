@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    tools:context="com.mine.autoshine.MainActivity"
+    tools:context="com.mine.autolight.MainActivity"
     tools:ignore="LabelFor">
 
     <LinearLayout
@@ -240,17 +240,18 @@
                         android:text="" />
                 </LinearLayout>
 
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <Button
-                        android:id="@+id/btn_save_settings"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/save_settings" />
-                </LinearLayout>
+				<LinearLayout
+					android:layout_width="fill_parent" 
+					android:layout_height="wrap_content"
+					android:orientation="horizontal"
+					android:gravity="center_horizontal">
+					
+					<Button
+						android:id="@+id/btn_save_settings"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:text="@string/save_settings" />
+				</LinearLayout>
 
                 <LinearLayout
                     android:layout_width="fill_parent"

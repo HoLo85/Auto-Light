@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Auto Shine"
+rootProject.name = "Auto Light"
 include ':app'

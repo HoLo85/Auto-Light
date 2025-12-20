@@ -23,19 +23,19 @@ public class LightService extends Service implements SensorEventListener {
     private Sensor lightSensor;
 
     // Smoothing & Logic Constants
-    private static final float ALPHA = 0.2f; // Low-pass filter weight
+    private static final float ALPHA = 0.2f; 
     private float mSmoothedLux = -1.0f;
     private int mLastAppliedBrightness = -1;
-    private static final int MIN_CHANGE_THRESHOLD = 3; // Prevent tiny updates
+    private static final int MIN_CHANGE_THRESHOLD = 3; 
 
     @Override
     public void onCreate() {
         super.onCreate();
         
-        // 1. Start Foreground to prevent system from killing the app
+        // Start Foreground to comply with Android background policies
         startForegroundServiceCompat();
 
-        // 2. Initialize Hardware Sensor
+        // Initialize Light Sensor
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         if (sensorManager != null) {
             lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
@@ -48,7 +48,6 @@ public class LightService extends Service implements SensorEventListener {
     private void startForegroundServiceCompat() {
         NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 
-        // Create Channel for Android 8.0+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID, "Auto-Brightness Service", 
@@ -56,7 +55,6 @@ public class LightService extends Service implements SensorEventListener {
             if (manager != null) manager.createNotificationChannel(channel);
         }
 
-        // Build Notification
         Notification.Builder builder;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             builder = new Notification.Builder(this, CHANNEL_ID);
@@ -67,10 +65,9 @@ public class LightService extends Service implements SensorEventListener {
         Notification notification = builder
                 .setContentTitle("Auto-Light Active")
                 .setContentText("Adjusting screen brightness automatically")
-                .setSmallIcon(android.R.drawable.ic_menu_compass) // Standard system icon
+                .setSmallIcon(android.R.drawable.ic_menu_compass)
                 .build();
 
-        // ID must not be 0
         startForeground(1, notification);
     }
 
@@ -79,17 +76,17 @@ public class LightService extends Service implements SensorEventListener {
         if (event.sensor.getType() == Sensor.TYPE_LIGHT) {
             float currentLux = event.values[0];
 
-            // 1. Smoothing (Prevents flicker)
+            // 1. Smoothing logic
             if (mSmoothedLux == -1.0f) {
                 mSmoothedLux = currentLux;
             } else {
                 mSmoothedLux = (mSmoothedLux * (1.0f - ALPHA)) + (currentLux * ALPHA);
             }
 
-            // 2. Calculate using the Logarithmic Math in BrightnessAlgorithm.java
+            // 2. Calculate using your Algorithm and MySettings points
             int targetBrightness = BrightnessAlgorithm.calculateBrightness(mSmoothedLux);
 
-            // 3. Apply only if the change is noticeable (Battery optimization)
+            // 3. Apply if change is significant
             if (Math.abs(targetBrightness - mLastAppliedBrightness) > MIN_CHANGE_THRESHOLD) {
                 applyBrightness(targetBrightness);
             }
@@ -101,11 +98,32 @@ public class LightService extends Service implements SensorEventListener {
             Settings.System.putInt(getContentResolver(), 
                     Settings.System.SCREEN_BRIGHTNESS, brightness);
             mLastAppliedBrightness = brightness;
-            Log.d(TAG, "New Brightness: " + brightness + " | Lux: " + mSmoothedLux);
+            Log.d(TAG, "Applied: " + brightness + " | Lux: " + mSmoothedLux);
         } catch (Exception e) {
-            Log.e(TAG, "Cannot write settings. Ensure WRITE_SETTINGS permission is granted.");
+            Log.e(TAG, "Error writing settings: " + e.getMessage());
         }
     }
 
     @Override
-    public int onStartCommand(Intent intent, int
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        return START_STICKY;
+    }
+
+    @Override
+    public void onDestroy() {
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(this);
+        }
+        super.onDestroy();
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        // Not used
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+}

@@ -1,116 +1,88 @@
 package com.mine.autolight;
 
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.Service;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.IBinder;
-import android.widget.Toast;
-import android.content.res.Configuration;
+import android.provider.Settings;
+import android.util.Log;
 
-public class LightService extends Service {
-	private LightControl shiner;
+public class LightService extends Service implements SensorEventListener {
 
-	private final BroadcastReceiver communicator = new BroadcastReceiver() {
+    private SensorManager sensorManager;
+    private Sensor lightSensor;
+    
+    // Smoothing constants
+    private static final float ALPHA = 0.2f; // Smoothing factor
+    private float mSmoothedLux = -1.0f;
+    
+    // Change threshold (prevents battery drain from tiny adjustments)
+    private static final int MIN_CHANGE_THRESHOLD = 5; 
+    private int mLastAppliedBrightness = -1;
 
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			int extra = intent.getIntExtra(Constants.SERVICE_INTENT_EXTRA, -1);
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
 
-			if (extra == Constants.SERVICE_INTENT_PAYLOAD_PING) {
-				Toast.makeText(context, getResources().getString(R.string.service_running) + "\n" +
-						getResources().getString(R.string.sensor_c) + " " + shiner.getLastSensorValue() + ",  " +
-						getResources().getString(R.string.brightness_c) + " " + shiner.getSetBrightness(),
-						Toast.LENGTH_SHORT).show();
-			}
+        if (lightSensor != null) {
+            sensorManager.registerListener(this, lightSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        }
+    }
 
-			if (extra == Constants.SERVICE_INTENT_PAYLOAD_SET) {
-				shiner.reconfigure();
-				Toast.makeText(context, getResources().getString(R.string.config_updated), Toast.LENGTH_SHORT).show();
-			}
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (event.sensor.getType() == Sensor.TYPE_LIGHT) {
+            float currentLux = event.values[0];
 
-			if (intent.getIntExtra(Constants.SERVICE_INTENT_EXTRA_TAP, -1) == 0) {
-				shiner.startListening();
-			}
-		}
-	};
+            // 1. Apply Smoothing (Low-pass filter)
+            if (mSmoothedLux == -1.0f) {
+                mSmoothedLux = currentLux; // First reading
+            } else {
+                mSmoothedLux = (mSmoothedLux * (1.0f - ALPHA)) + (currentLux * ALPHA);
+            }
 
-	private final BroadcastReceiver deviceState = new BroadcastReceiver() {
+            // 2. Calculate Brightness using our new Logarithmic Algorithm
+            int targetBrightness = BrightnessAlgorithm.calculateBrightness(mSmoothedLux);
 
-		@Override
-		public void onReceive(Context context, Intent intent) {
+            // 3. Only update if the change is significant (Hysteresis)
+            if (Math.abs(targetBrightness - mLastAppliedBrightness) >= MIN_CHANGE_THRESHOLD) {
+                updateSystemBrightness(targetBrightness);
+            }
+        }
+    }
 
-			if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
-				shiner.stopListening();
-			} else {
-				shiner.setLandscape(
-						context.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE);
+    private void updateSystemBrightness(int brightness) {
+        try {
+            Settings.System.putInt(getContentResolver(), 
+                    Settings.System.SCREEN_BRIGHTNESS, brightness);
+            mLastAppliedBrightness = brightness;
+            Log.d("AutoLight", "Brightness updated to: " + brightness + " for Lux: " + mSmoothedLux);
+        } catch (Exception e) {
+            Log.e("AutoLight", "Error writing settings. Check WRITE_SETTINGS permission.");
+        }
+    }
 
-				if (Intent.ACTION_SCREEN_ON.equals(intent.getAction()))
-					shiner.onScreenUnlock();
-				else
-					shiner.startListening();
-			}
-		}
-	};
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        return START_STICKY;
+    }
 
-	@Override
-	public IBinder onBind(Intent arg0) {
-		return null;
-	}
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        sensorManager.unregisterListener(this);
+    }
 
-	@Override
-	public int onStartCommand(Intent intent, int flags, int startId) {
-		setUpAsForeground();
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
 
-		shiner = new LightControl(this);
-		shiner.onScreenUnlock();
-		IntentFilter commandFilt = new IntentFilter(Constants.SERVICE_INTENT_ACTION);
-		registerReceiver(communicator, commandFilt, RECEIVER_EXPORTED);
-
-		IntentFilter deviceFilt = new IntentFilter(Intent.ACTION_SCREEN_ON);
-		deviceFilt.addAction(Intent.ACTION_SCREEN_OFF);
-		deviceFilt.addAction(Intent.ACTION_CONFIGURATION_CHANGED);
-		registerReceiver(deviceState, deviceFilt);
-
-		return Service.START_STICKY;
-	}
-
-	@Override
-	public void onDestroy() {
-		shiner.stopListening();
-		unregisterReceiver(communicator);
-		unregisterReceiver(deviceState);
-		Toast.makeText(this, getResources().getString(R.string.service_stopped), Toast.LENGTH_SHORT).show();
-		super.onDestroy();
-	}
-
-	private void setUpAsForeground() {
-		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-
-		String channelId = "light_channel_id";
-		NotificationChannel channel = new NotificationChannel(channelId, "Auto Light", NotificationManager.IMPORTANCE_HIGH);
-		channel.setImportance(NotificationManager.IMPORTANCE_MIN);
-		channel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
-		notificationManager.createNotificationChannel(channel);
-
-		Intent tapIntent = new Intent();
-		tapIntent.putExtra(Constants.SERVICE_INTENT_EXTRA_TAP, 0);
-		tapIntent.setAction(Constants.SERVICE_INTENT_ACTION);
-		PendingIntent tapPendingIntent = PendingIntent.getBroadcast(this, 0, tapIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_CANCEL_CURRENT);
-
-		Notification.Builder notificationBuilder = new Notification.Builder(this, channelId);
-		Notification mNotification = notificationBuilder.setOngoing(true)
-				.setSmallIcon(R.mipmap.ic_launcher)
-				.setCategory(Notification.CATEGORY_SERVICE)
-				.setContentIntent(tapPendingIntent)
-				.build();
-
-		startForeground(123, mNotification);
-	}
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 }

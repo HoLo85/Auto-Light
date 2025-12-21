@@ -3,12 +3,15 @@ package com.mine.autolight;
 import android.Manifest;
 import android.app.Activity;
 import android.app.ActivityManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.provider.Settings;
 import android.widget.Button;
 import android.widget.EditText;
@@ -23,6 +26,16 @@ public class MainActivity extends Activity {
     private TextView tvServiceState;
     private Button btnStartStop;
 
+    // Receiver to catch data from the background process
+    private final BroadcastReceiver dataReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            int lux = intent.getIntExtra("lux", 0);
+            int bri = intent.getIntExtra("bri", 0);
+            tvServiceState.setText("Sensor: " + lux + " lx | Target: " + bri);
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -31,23 +44,48 @@ public class MainActivity extends Activity {
         mySettings = new MySettings(this);
         initViews();
         loadUISettings();
-        updateUIState(); // Check if service is already running on launch
 
-        // 1. START / STOP TOGGLE
         btnStartStop.setOnClickListener(v -> toggleService());
 
-        // 2. SAVE BUTTON
+        // SAVE BUTTON: Saves and tells Service to reload
         findViewById(R.id.btn_save_settings).setOnClickListener(v -> {
             saveUISettings();
-            Toast.makeText(this, "Settings Saved", Toast.LENGTH_SHORT).show();
-            // If running, restart to refresh the background process's memory
             if (isServiceRunning()) {
-                startAutoLightService();
+                Intent intent = new Intent(this, LightService.class);
+                intent.putExtra("command", "reload");
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent);
+                else startService(intent);
+            }
+            Toast.makeText(this, "Settings Applied", Toast.LENGTH_SHORT).show();
+        });
+
+        // REQUEST BUTTON: Battery Optimization
+        findViewById(R.id.btn_request).setOnClickListener(v -> {
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
+                Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                intent.setData(Uri.parse("package:" + getPackageName()));
+                startActivity(intent);
+            } else {
+                Toast.makeText(this, "Already Exempted", Toast.LENGTH_SHORT).show();
             }
         });
 
-        // 3. GET DATA / REFRESH
+        // GET DATA: Updates UI manually (The receiver also does this live)
         findViewById(R.id.btn_get_state).setOnClickListener(v -> updateUIState());
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        updateUIState();
+        registerReceiver(dataReceiver, new IntentFilter("COM_MINE_AUTOLIGHT_UPDATE"), Context.RECEIVER_EXPORTED);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(dataReceiver);
     }
 
     private void initViews() {
@@ -67,64 +105,42 @@ public class MainActivity extends Activity {
     private void updateUIState() {
         if (isServiceRunning()) {
             tvServiceState.setText("Service: RUNNING");
-            btnStartStop.setText(getString(android.R.string.cancel)); // Or your @string/stop
+            btnStartStop.setText("STOP");
         } else {
             tvServiceState.setText("Service: STOPPED");
-            btnStartStop.setText("START"); // Or your @string/run
+            btnStartStop.setText("START");
         }
     }
 
     private void toggleService() {
         if (isServiceRunning()) {
             stopService(new Intent(this, LightService.class));
-            Toast.makeText(this, "Stopping...", Toast.LENGTH_SHORT).show();
         } else {
-            checkPermissionsAndStart();
+            startAutoLightService();
         }
-        // Give the system a moment to update then refresh UI
         tvServiceState.postDelayed(this::updateUIState, 300);
     }
 
-    private void checkPermissionsAndStart() {
-        // 1. Check Write Settings
+    private void startAutoLightService() {
         if (!Settings.System.canWrite(this)) {
-            Intent intent = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS);
-            intent.setData(Uri.parse("package:" + getPackageName()));
-            startActivity(intent);
+            startActivity(new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:" + getPackageName())));
             return;
         }
-
-        // 2. Check Notifications (Android 13+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 101);
-                return;
-            }
-        }
-
-        startAutoLightService();
-    }
-
-    private void startAutoLightService() {
         Intent intent = new Intent(this, LightService.class);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent);
-        } else {
-            startService(intent);
-        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent);
+        else startService(intent);
     }
 
     private boolean isServiceRunning() {
         ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (LightService.class.getName().equals(service.service.getClassName())) {
-                return true;
-            }
+            if (LightService.class.getName().equals(service.service.getClassName())) return true;
         }
         return false;
     }
 
     private void loadUISettings() {
+        mySettings.load();
         etL1.setText(String.valueOf(mySettings.l1));
         etL2.setText(String.valueOf(mySettings.l2));
         etL3.setText(String.valueOf(mySettings.l3));
@@ -134,33 +150,27 @@ public class MainActivity extends Activity {
         etB3.setText(String.valueOf(mySettings.b3));
         etB4.setText(String.valueOf(mySettings.b4));
 
-        int mode = mySettings.mode;
-        if (mode == Constants.WORK_MODE_ALWAYS) rgWorkMode.check(R.id.rb_work_always);
-        else if (mode == Constants.WORK_MODE_PORTRAIT) rgWorkMode.check(R.id.rb_work_portrait);
-        else if (mode == Constants.WORK_MODE_LANDSCAPE) rgWorkMode.check(R.id.rb_work_landscape);
-        else if (mode == Constants.WORK_MODE_UNLOCK) rgWorkMode.check(R.id.rb_work_unlock);
+        if (mySettings.mode == Constants.WORK_MODE_ALWAYS) rgWorkMode.check(R.id.rb_work_always);
+        else if (mySettings.mode == Constants.WORK_MODE_PORTRAIT) rgWorkMode.check(R.id.rb_work_portrait);
+        else if (mySettings.mode == Constants.WORK_MODE_LANDSCAPE) rgWorkMode.check(R.id.rb_work_landscape);
+        else if (mySettings.mode == Constants.WORK_MODE_UNLOCK) rgWorkMode.check(R.id.rb_work_unlock);
     }
 
     private void saveUISettings() {
-        try {
-            mySettings.l1 = Integer.parseInt(etL1.getText().toString());
-            mySettings.l2 = Integer.parseInt(etL2.getText().toString());
-            mySettings.l3 = Integer.parseInt(etL3.getText().toString());
-            mySettings.l4 = Integer.parseInt(etL4.getText().toString());
-            mySettings.b1 = Integer.parseInt(etB1.getText().toString());
-            mySettings.b2 = Integer.parseInt(etB2.getText().toString());
-            mySettings.b3 = Integer.parseInt(etB3.getText().toString());
-            mySettings.b4 = Integer.parseInt(etB4.getText().toString());
+        mySettings.l1 = Integer.parseInt(etL1.getText().toString());
+        mySettings.l2 = Integer.parseInt(etL2.getText().toString());
+        mySettings.l3 = Integer.parseInt(etL3.getText().toString());
+        mySettings.l4 = Integer.parseInt(etL4.getText().toString());
+        mySettings.b1 = Integer.parseInt(etB1.getText().toString());
+        mySettings.b2 = Integer.parseInt(etB2.getText().toString());
+        mySettings.b3 = Integer.parseInt(etB3.getText().toString());
+        mySettings.b4 = Integer.parseInt(etB4.getText().toString());
 
-            int checkedId = rgWorkMode.getCheckedRadioButtonId();
-            if (checkedId == R.id.rb_work_always) mySettings.mode = Constants.WORK_MODE_ALWAYS;
-            else if (checkedId == R.id.rb_work_portrait) mySettings.mode = Constants.WORK_MODE_PORTRAIT;
-            else if (checkedId == R.id.rb_work_landscape) mySettings.mode = Constants.WORK_MODE_LANDSCAPE;
-            else if (checkedId == R.id.rb_work_unlock) mySettings.mode = Constants.WORK_MODE_UNLOCK;
-
-            mySettings.save();
-        } catch (NumberFormatException e) {
-            Toast.makeText(this, "Please enter valid numbers", Toast.LENGTH_SHORT).show();
-        }
+        int id = rgWorkMode.getCheckedRadioButtonId();
+        if (id == R.id.rb_work_always) mySettings.mode = Constants.WORK_MODE_ALWAYS;
+        else if (id == R.id.rb_work_portrait) mySettings.mode = Constants.WORK_MODE_PORTRAIT;
+        else if (id == R.id.rb_work_landscape) mySettings.mode = Constants.WORK_MODE_LANDSCAPE;
+        else if (id == R.id.rb_work_unlock) mySettings.mode = Constants.WORK_MODE_UNLOCK;
+        mySettings.save();
     }
 }

@@ -8,12 +8,12 @@ public class MySettings {
     private final Context context;
     private SharedPreferences sharedPref;
     
-    // These must be public for the algorithm to see them
     public int l1, l2, l3, l4, b1, b2, b3, b4;
     public int mode;
 
-    // This is what the BrightnessAlgorithm uses to "see" your points
+    // The algorithm reads this static map
     public static HashMap<Integer, Integer> points = new HashMap<>();
+    public static int currentMode;
 
     public MySettings(Context context) {
         this.context = context;
@@ -21,8 +21,6 @@ public class MySettings {
     }
 
     public void load() {
-        // Use MODE_PRIVATE. Note: MODE_MULTI_PROCESS is deprecated in modern Android, 
-        // but it's okay for older devices.
         sharedPref = context.getSharedPreferences("mine.autolight", Context.MODE_PRIVATE);
         
         l1 = sharedPref.getInt("l1", 10);
@@ -30,18 +28,18 @@ public class MySettings {
         l3 = sharedPref.getInt("l3", 1000);
         l4 = sharedPref.getInt("l4", 10000);
         
-        b1 = sharedPref.getInt("b1", 10); // Changed from 1 to 10 for better visibility
+        b1 = sharedPref.getInt("b1", 20);
         b2 = sharedPref.getInt("b2", 80);
         b3 = sharedPref.getInt("b3", 160);
         b4 = sharedPref.getInt("b4", 255);
         
-        mode = sharedPref.getInt("mode", 0); // Default mode
+        mode = sharedPref.getInt("mode", 0); 
+        currentMode = mode;
 
-        // CRITICAL: Fill the hashmap so the algorithm can use it
-        updatePointsMap();
+        updateMap();
     }
 
-    private void updatePointsMap() {
+    public void updateMap() {
         points.clear();
         points.put(l1, b1);
         points.put(l2, b2);
@@ -60,9 +58,7 @@ public class MySettings {
         editor.putInt("b3", b3);
         editor.putInt("b4", b4);
         editor.putInt("mode", mode);
-        editor.apply(); // apply() is faster and safer than commit()
-        
-        // Refresh the map after saving
-        updatePointsMap();
+        editor.apply();
+        updateMap();
     }
 }

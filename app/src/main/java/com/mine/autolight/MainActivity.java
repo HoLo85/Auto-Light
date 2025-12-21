@@ -185,6 +185,12 @@ public class MainActivity extends Activity {
 			}
 		}
 
+		// If the selected work mode requires phone-state permission, request it at startup.
+		// This will prompt the user when the app starts (useful because the default mode is now WORK_MODE_UNLOCK).
+		if (sett.mode == Constants.WORK_MODE_UNLOCK) {
+			requestPhonePermission();
+		}
+
 		LinearLayout llPower = findViewById(R.id.ll_ignore_battery_request);
 		if (powerMan.isIgnoringBatteryOptimizations(getPackageName())) {
 			llPower.setVisibility(View.GONE);

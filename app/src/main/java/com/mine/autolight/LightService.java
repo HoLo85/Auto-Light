@@ -1,62 +1,116 @@
 package com.mine.autolight;
 
-import android.app.*;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
-import android.hardware.*;
-import android.os.*;
-import android.provider.Settings;
+import android.content.IntentFilter;
+import android.os.IBinder;
+import android.widget.Toast;
+import android.content.res.Configuration;
 
-public class LightService extends Service implements SensorEventListener {
-    private SensorManager sensorManager;
-    private float mSmoothedLux = -1.0f;
-    private static final float ALPHA = 0.2f;
+public class LightService extends Service {
+	private LightControl shiner;
 
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        new MySettings(this); // Load settings on start
-        setupForeground();
-        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        Sensor light = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
-        if (light != null) sensorManager.registerListener(this, light, SensorManager.SENSOR_DELAY_NORMAL);
-    }
+	private final BroadcastReceiver communicator = new BroadcastReceiver() {
 
-    private void setupForeground() {
-        String cid = "autolight";
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel c = new NotificationChannel(cid, "AutoLight", NotificationManager.IMPORTANCE_LOW);
-            ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(c);
-        }
-        Notification n = new Notification.Builder(this, cid)
-                .setContentTitle("Auto-Light Running")
-                .setSmallIcon(android.R.drawable.ic_menu_compass).build();
-        startForeground(1, n);
-    }
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			int extra = intent.getIntExtra(Constants.SERVICE_INTENT_EXTRA, -1);
 
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        // If MainActivity sends a new intent, refresh settings
-        new MySettings(this);
-        return START_STICKY;
-    }
+			if (extra == Constants.SERVICE_INTENT_PAYLOAD_PING) {
+				Toast.makeText(context, getResources().getString(R.string.service_running) + "\n" +
+						getResources().getString(R.string.sensor_c) + " " + shiner.getLastSensorValue() + ",  " +
+						getResources().getString(R.string.brightness_c) + " " + shiner.getSetBrightness(),
+						Toast.LENGTH_SHORT).show();
+			}
 
-    @Override
-    public void onSensorChanged(SensorEvent event) {
-        float lux = event.values[0];
-        mSmoothedLux = (mSmoothedLux == -1.0f) ? lux : (mSmoothedLux * (1.0f - ALPHA)) + (lux * ALPHA);
-        
-        int target = BrightnessAlgorithm.calculateBrightness(mSmoothedLux);
-        try {
-            Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, target);
-        } catch (Exception e) { }
-    }
+			if (extra == Constants.SERVICE_INTENT_PAYLOAD_SET) {
+				shiner.reconfigure();
+				Toast.makeText(context, getResources().getString(R.string.config_updated), Toast.LENGTH_SHORT).show();
+			}
 
-    @Override
-    public void onDestroy() {
-        if (sensorManager != null) sensorManager.unregisterListener(this);
-        super.onDestroy();
-    }
+			if (intent.getIntExtra(Constants.SERVICE_INTENT_EXTRA_TAP, -1) == 0) {
+				shiner.startListening();
+			}
+		}
+	};
 
-    @Override public IBinder onBind(Intent i) { return null; }
-    @Override public void onAccuracyChanged(Sensor s, int a) {}
+	private final BroadcastReceiver deviceState = new BroadcastReceiver() {
+
+		@Override
+		public void onReceive(Context context, Intent intent) {
+
+			if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
+				shiner.stopListening();
+			} else {
+				shiner.setLandscape(
+						context.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE);
+
+				if (Intent.ACTION_SCREEN_ON.equals(intent.getAction()))
+					shiner.onScreenUnlock();
+				else
+					shiner.startListening();
+			}
+		}
+	};
+
+	@Override
+	public IBinder onBind(Intent arg0) {
+		return null;
+	}
+
+	@Override
+	public int onStartCommand(Intent intent, int flags, int startId) {
+		setUpAsForeground();
+
+		shiner = new LightControl(this);
+		shiner.onScreenUnlock();
+		IntentFilter commandFilt = new IntentFilter(Constants.SERVICE_INTENT_ACTION);
+		registerReceiver(communicator, commandFilt, RECEIVER_EXPORTED);
+
+		IntentFilter deviceFilt = new IntentFilter(Intent.ACTION_SCREEN_ON);
+		deviceFilt.addAction(Intent.ACTION_SCREEN_OFF);
+		deviceFilt.addAction(Intent.ACTION_CONFIGURATION_CHANGED);
+		registerReceiver(deviceState, deviceFilt);
+
+		return Service.START_STICKY;
+	}
+
+	@Override
+	public void onDestroy() {
+		shiner.stopListening();
+		unregisterReceiver(communicator);
+		unregisterReceiver(deviceState);
+		Toast.makeText(this, getResources().getString(R.string.service_stopped), Toast.LENGTH_SHORT).show();
+		super.onDestroy();
+	}
+
+	private void setUpAsForeground() {
+		NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+		String channelId = "light_channel_id";
+		NotificationChannel channel = new NotificationChannel(channelId, "Auto Light", NotificationManager.IMPORTANCE_HIGH);
+		channel.setImportance(NotificationManager.IMPORTANCE_MIN);
+		channel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+		notificationManager.createNotificationChannel(channel);
+
+		Intent tapIntent = new Intent();
+		tapIntent.putExtra(Constants.SERVICE_INTENT_EXTRA_TAP, 0);
+		tapIntent.setAction(Constants.SERVICE_INTENT_ACTION);
+		PendingIntent tapPendingIntent = PendingIntent.getBroadcast(this, 0, tapIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_CANCEL_CURRENT);
+
+		Notification.Builder notificationBuilder = new Notification.Builder(this, channelId);
+		Notification mNotification = notificationBuilder.setOngoing(true)
+				.setSmallIcon(R.mipmap.ic_launcher)
+				.setCategory(Notification.CATEGORY_SERVICE)
+				.setContentIntent(tapPendingIntent)
+				.build();
+
+		startForeground(123, mNotification);
+	}
 }

@@ -10,7 +10,6 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
@@ -38,7 +37,12 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="specialUse"
-            android:process=":BacklightController" />
+            android:process=":BacklightController">
+            
+            <property 
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_TYPE"
+                android:value="Automated brightness control based on ambient light sensor data for user eye comfort." />
+        </service>
 
         <receiver
             android:name=".AutoStart"

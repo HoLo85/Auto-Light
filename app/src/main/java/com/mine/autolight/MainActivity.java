@@ -6,7 +6,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.view.View;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
@@ -19,21 +18,24 @@ public class MainActivity extends Activity {
         
         mySettings = new MySettings(this);
 
-        // --- IMPORTANT: Replace R.id.YOUR_ID with the IDs found in your XML ---
+        // Map the buttons to the logic
+        // If your XML IDs are different, change "run", "stop", and "apply" below
+        setupButton("run", v -> startServiceWithPermission());
+        setupButton("stop", v -> {
+            stopService(new Intent(this, LightService.class));
+            Toast.makeText(this, "Service Stopped", Toast.LENGTH_SHORT).show();
+        });
+        setupButton("apply", v -> {
+            mySettings.save(); // This updates the static Map the algorithm uses
+            startServiceWithPermission(); // Restarts/Updates the service
+            Toast.makeText(this, "Settings Applied", Toast.LENGTH_SHORT).show();
+        });
+    }
 
-        // START BUTTON LOGIC
-        View startBtn = findViewById(getResources().getIdentifier("start", "id", getPackageName())); 
-        if (startBtn != null) {
-            startBtn.setOnClickListener(v -> startServiceWithPermission());
-        }
-
-        // STOP BUTTON LOGIC
-        View stopBtn = findViewById(getResources().getIdentifier("stop", "id", getPackageName()));
-        if (stopBtn != null) {
-            stopBtn.setOnClickListener(v -> {
-                stopService(new Intent(this, LightService.class));
-                Toast.makeText(this, "Service Stopped", Toast.LENGTH_SHORT).show();
-            });
+    private void setupButton(String idName, android.view.View.OnClickListener listener) {
+        int id = getResources().getIdentifier(idName, "id", getPackageName());
+        if (id != 0 && findViewById(id) != null) {
+            findViewById(id).setOnClickListener(listener);
         }
     }
 
@@ -49,7 +51,6 @@ public class MainActivity extends Activity {
             Intent intent = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS);
             intent.setData(Uri.parse("package:" + getPackageName()));
             startActivity(intent);
-            Toast.makeText(this, "Please allow Write Settings permission", Toast.LENGTH_LONG).show();
         }
     }
 }

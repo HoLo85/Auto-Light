@@ -181,7 +181,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == RE_WRITE_SETTINGS) {
+        if (requestCode == REQ_WRITE_SETTINGS) {
             isDialogShown = false;
             // Return from system settings: request service to bring overlay back
             sendBroadcastToService(11);

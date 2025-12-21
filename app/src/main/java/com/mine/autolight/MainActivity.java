@@ -20,6 +20,9 @@ import android.widget.*;
 
 public class MainActivity extends Activity {
 
+	private static final int REQ_WRITE_SETTINGS = 100; // requestCode for ACTION_MANAGE_WRITE_SETTINGS
+	private static final int REQ_RUNTIME_PERMS = 123; // requestCode used for runtime permission requests
+
 	private Button btnStart;
 	private TextView tvState;
 
@@ -176,6 +179,7 @@ public class MainActivity extends Activity {
 	public void onResume() {
 		super.onResume();
 
+		// Only request runtime phone permission after WRITE_SETTINGS is available.
 		if (checkAndRequestPermissions()) {
 			if (isServiceRunning()) {
 				displayServiceStatus(1);
@@ -183,12 +187,11 @@ public class MainActivity extends Activity {
 				runService();
 				displayServiceStatus(-1);
 			}
-		}
 
-		// If the selected work mode requires phone-state permission, request it at startup.
-		// This will prompt the user when the app starts (useful because the default mode is now WORK_MODE_UNLOCK).
-		if (sett.mode == Constants.WORK_MODE_UNLOCK) {
-			requestPhonePermission();
+			// Now that write-settings access is available, request phone permission if needed.
+			if (sett.mode == Constants.WORK_MODE_UNLOCK) {
+				requestPhonePermission();
+			}
 		}
 
 		LinearLayout llPower = findViewById(R.id.ll_ignore_battery_request);
@@ -196,6 +199,52 @@ public class MainActivity extends Activity {
 			llPower.setVisibility(View.GONE);
 		} else {
 			llPower.setVisibility(View.VISIBLE);
+		}
+	}
+
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		super.onActivityResult(requestCode, resultCode, data);
+
+		// Returned from WRITE_SETTINGS management screen
+		if (requestCode == REQ_WRITE_SETTINGS) {
+			// If the user granted WRITE_SETTINGS we can now request READ_PHONE_STATE safely.
+			if (Settings.System.canWrite(this)) {
+				// update UI / start service now that permission was granted
+				if (isServiceRunning()) {
+					displayServiceStatus(1);
+				} else {
+					runService();
+					displayServiceStatus(-1);
+				}
+
+				if (sett.mode == Constants.WORK_MODE_UNLOCK) {
+					requestPhonePermission();
+				}
+			} else {
+				// user didn't grant write settings — keep UI consistent
+				displayServiceStatus(0);
+			}
+		}
+	}
+
+	@Override
+	public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+		if (requestCode == REQ_RUNTIME_PERMS) {
+			// We requested READ_PHONE_STATE (and/or POST_NOTIFICATIONS). If the phone permission is denied,
+			// the service will still work, but unlock/rotate mode won't be able to detect ringing; inform the user.
+			if (permissions != null && permissions.length > 0) {
+				for (int i = 0; i < permissions.length; i++) {
+					if (Manifest.permission.READ_PHONE_STATE.equals(permissions[i])) {
+						if (grantResults.length > i && grantResults[i] == PackageManager.PERMISSION_GRANTED) {
+							Toast.makeText(this, R.string.permission_phone_granted, Toast.LENGTH_SHORT).show();
+						} else {
+							Toast.makeText(this, R.string.permission_phone_denied, Toast.LENGTH_SHORT).show();
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -229,18 +278,20 @@ public class MainActivity extends Activity {
 	private void requestNotificationPermission() {
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
 			if (this.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-				this.requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 123);
+				this.requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_RUNTIME_PERMS);
 			}
 		}
 	}
 
 	private void requestPhonePermission() {
+		// Only request runtime permission if it's not already granted.
 		if (this.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-			this.requestPermissions(new String[]{Manifest.permission.READ_PHONE_STATE}, 123);
+			this.requestPermissions(new String[]{Manifest.permission.READ_PHONE_STATE}, REQ_RUNTIME_PERMS);
 		}
 	}
 
 	private boolean checkAndRequestPermissions() {
+		// Check WRITE_SETTINGS (modify system settings) permission first.
 		if (Settings.System.canWrite(this)) {
 			return true;
 		} else {
@@ -250,7 +301,10 @@ public class MainActivity extends Activity {
 			AlertDialog.Builder builder = new AlertDialog.Builder(this);
 			builder.setMessage(R.string.permission_request);
 			builder.setPositiveButton(R.string.settings, (dialog, id) -> {
-				startActivityForResult(new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS), 0);
+				// Open the system screen where user can grant WRITE_SETTINGS for the app.
+				Intent intent = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS,
+						Uri.parse("package:" + getPackageName()));
+				startActivityForResult(intent, REQ_WRITE_SETTINGS);
 				isDialogShown = false;
 			});
 

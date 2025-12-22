@@ -9,27 +9,37 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
+import android.content.res.Configuration;
 import android.os.Build;
 import android.os.IBinder;
 
-public class LightService extends Service implements SensorEventListener {
+public class LightService extends Service {
     private static final int NOTIFICATION_ID = 1;
     private static final String CHANNEL_ID = "AutoLightServiceChannel";
 
-    private SensorManager sensorManager;
-    private Sensor lightSensor;
     private MySettings settings;
     private LightControl lightControl;
 
     private final BroadcastReceiver eventReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            // Logic for unlock/rotate handled here
-            // Note: Re-enable your specific settings check here if needed
+            String action = intent.getAction();
+            
+            // Handle Screen Unlock
+            if (Intent.ACTION_USER_PRESENT.equals(action)) {
+                if (settings.mode == Constants.WORK_MODE_UNLOCK_ROTATE) {
+                    lightControl.onScreenUnlock();
+                }
+            } 
+            // Handle Rotation
+            else if (Intent.ACTION_CONFIGURATION_CHANGED.equals(action)) {
+                boolean isLandscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+                lightControl.setLandscape(isLandscape);
+                
+                if (settings.mode == Constants.WORK_MODE_UNLOCK_ROTATE) {
+                    lightControl.onScreenUnlock(); // Reuse unlock logic to refresh brightness on rotate
+                }
+            }
         }
     };
 
@@ -38,13 +48,17 @@ public class LightService extends Service implements SensorEventListener {
         super.onCreate();
         settings = new MySettings(this);
         lightControl = new LightControl(this);
-        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
 
+        // Register for system events
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_USER_PRESENT);
         filter.addAction(Intent.ACTION_CONFIGURATION_CHANGED);
-        registerReceiver(eventReceiver, filter);
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(eventReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(eventReceiver, filter);
+        }
     }
 
     @Override
@@ -60,35 +74,25 @@ public class LightService extends Service implements SensorEventListener {
 
         Notification notification = builder
                 .setContentTitle("Auto Light Active")
-                .setContentText("Monitoring brightness")
-                .setSmallIcon(android.R.drawable.ic_menu_compass) // Use system icon for safety
+                .setContentText("Adjusting brightness based on light")
+                .setSmallIcon(android.R.drawable.ic_menu_compass) 
+                .setOngoing(true)
                 .build();
 
+        // Android 14+ requirement
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
         } else {
             startForeground(NOTIFICATION_ID, notification);
         }
 
-        if (lightSensor != null) {
-            sensorManager.registerListener(this, lightSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        // Start listening based on the mode
+        if (settings.mode == Constants.WORK_MODE_ALWAYS) {
+            lightControl.startListening();
         }
 
         return START_STICKY;
     }
-
-    @Override
-    public void onSensorChanged(SensorEvent event) {
-        if (event.sensor.getType() == Sensor.TYPE_LIGHT) {
-            float lux = event.values[0];
-            // Call your actual method here. 
-            // If it's not 'adjustBrightness', please replace with your method name.
-            // lightControl.adjustBrightness(lux); 
-        }
-    }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -101,9 +105,9 @@ public class LightService extends Service implements SensorEventListener {
 
     @Override
     public void onDestroy() {
-        super.onDestroy();
-        sensorManager.unregisterListener(this);
+        lightControl.stopListening();
         unregisterReceiver(eventReceiver);
+        super.onDestroy();
     }
 
     @Override

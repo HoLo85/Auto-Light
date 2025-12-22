@@ -33,7 +33,6 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync"
-            android:process=":BacklightController">
             <intent-filter>
                 <action android:name="Light command" />
             </intent-filter>

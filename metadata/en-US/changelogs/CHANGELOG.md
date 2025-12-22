@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# Release 2.1
+Refactor: remove telephony permissions, modernize service for Android 14, and implement log-based brightness scaling.
+
 # Release 2.0
 Refactor brightness calculation with log interpolation: Switching from plain linear interpolation in lux space to a non-linear mapping that will feel much better to users because human perception of brightness is roughly logarithmic.
 

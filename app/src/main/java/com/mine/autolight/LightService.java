@@ -12,6 +12,7 @@ import android.content.pm.ServiceInfo;
 import android.content.res.Configuration;
 import android.os.Build;
 import android.os.IBinder;
+import android.widget.Toast;
 
 public class LightService extends Service {
     private static final int NOTIFICATION_ID = 1;
@@ -20,25 +21,33 @@ public class LightService extends Service {
     private MySettings settings;
     private LightControl lightControl;
 
+    // RESTORED: This receiver now correctly handles mode switching
     private final BroadcastReceiver eventReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            
-            // Handle Screen Unlock
+            if (action == null) return;
+
+            // Handle UI Communication (GET DATA / PING)
+            if (Constants.SERVICE_INTENT_ACTION.equals(action)) {
+                int payload = intent.getIntExtra(Constants.SERVICE_INTENT_EXTRA, -1);
+                handleUiCommand(payload);
+                return;
+            }
+
+            // Update landscape state for LightControl
+            boolean isLandscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+            lightControl.setLandscape(isLandscape);
+
+            // MODE LOGIC RESTORED
             if (Intent.ACTION_USER_PRESENT.equals(action)) {
                 if (settings.mode == Constants.WORK_MODE_UNLOCK) {
                     lightControl.onScreenUnlock();
                 }
-            } 
-            // Handle Rotation
-            else if (Intent.ACTION_CONFIGURATION_CHANGED.equals(action)) {
-                boolean isLandscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
-                lightControl.setLandscape(isLandscape);
-                
-                // Refresh brightness on rotate if in unlock mode
-                if (settings.mode == Constants.WORK_MODE_UNLOCK) {
-                    lightControl.onScreenUnlock();
+            } else if (Intent.ACTION_CONFIGURATION_CHANGED.equals(action)) {
+                // If mode is Landscape or Portrait, we need to re-evaluate
+                if (settings.mode == Constants.WORK_MODE_LANDSCAPE || settings.mode == Constants.WORK_MODE_PORTRAIT) {
+                    lightControl.startListening(); 
                 }
             }
         }
@@ -53,47 +62,61 @@ public class LightService extends Service {
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_USER_PRESENT);
         filter.addAction(Intent.ACTION_CONFIGURATION_CHANGED);
+        filter.addAction(Constants.SERVICE_INTENT_ACTION); // Allow UI to talk to Service
         
-        // Security fix for Android 14+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(eventReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            registerReceiver(eventReceiver, filter, Context.RECEIVER_EXPORTED);
         } else {
             registerReceiver(eventReceiver, filter);
+        }
+    }
+
+    private void handleUiCommand(int payload) {
+        if (payload == Constants.SERVICE_INTENT_PAYLOAD_PING) {
+            // RESTORED: Feedback for the "GET DATA" button
+            String status = "Lux: " + lightControl.getLastSensorValue() + 
+                            " | Bright: " + lightControl.getSetBrightness();
+            Toast.makeText(this, status, Toast.LENGTH_SHORT).show();
+        } else if (payload == Constants.SERVICE_INTENT_PAYLOAD_SET) {
+            settings.load();
+            lightControl.reconfigure();
         }
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         createNotificationChannel();
+        startForeground(NOTIFICATION_ID, getNotification());
 
-        Notification.Builder builder;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            builder = new Notification.Builder(this, CHANNEL_ID);
-        } else {
-            builder = new Notification.Builder(this);
-        }
-
-        Notification notification = builder
-                .setContentTitle("Auto Light Active")
-                .setContentText("Adjusting brightness based on ambient light")
-                .setSmallIcon(android.R.drawable.ic_menu_compass) 
-                .setOngoing(true)
-                .build();
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
-        } else {
-            startForeground(NOTIFICATION_ID, notification);
-        }
-
-        // Logic check: only start continuous polling if mode is ALWAYS
+        // Initial check for Always mode
         if (settings.mode == Constants.WORK_MODE_ALWAYS) {
             lightControl.startListening();
         }
-
+        
         return START_STICKY;
     }
 
+    private Notification getNotification() {
+        Notification.Builder builder = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ? 
+                new Notification.Builder(this, CHANNEL_ID) : new Notification.Builder(this);
+
+        return builder
+                .setContentTitle("Auto Light Active")
+                .setContentText("Mode: " + getModeName())
+                .setSmallIcon(android.R.drawable.ic_menu_compass)
+                .setOngoing(true)
+                .build();
+    }
+
+    private String getModeName() {
+        if (settings.mode == Constants.WORK_MODE_ALWAYS) return "Always";
+        if (settings.mode == Constants.WORK_MODE_UNLOCK) return "Unlock";
+        if (settings.mode == Constants.WORK_MODE_LANDSCAPE) return "Landscape";
+        if (settings.mode == Constants.WORK_MODE_PORTRAIT) return "Portrait";
+        return "Unknown";
+    }
+
+    // Existing helper methods...
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
@@ -105,7 +128,6 @@ public class LightService extends Service {
 
     @Override
     public void onDestroy() {
-        // Clean up: stop the sensor and the receiver
         lightControl.stopListening();
         unregisterReceiver(eventReceiver);
         super.onDestroy();
@@ -113,4 +135,12 @@ public class LightService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) { return null; }
+    
+    private void startForeground(int id, Notification notification) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+        } else {
+            super.startForeground(id, notification);
+        }
+    }
 }

@@ -1,1 +1,1 @@
-Automatic screen brightness adjustment
+Auto Light is a specialized, lightweight utility replacement for the standard Android adaptive brightness feature.

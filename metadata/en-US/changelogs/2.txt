@@ -1,0 +1,4 @@
+- Refactored brightness calculation with log interpolation for more natural, human-eye perception.
+- Removed unnecessary telephony permissions.
+- Modernized background service for Android 14 compatibility.
+- Fixed performance logic and notification status behavior.

@@ -4,122 +4,84 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
-import android.content.res.Configuration;
 import android.os.Build;
 import android.os.IBinder;
-import android.widget.Toast;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.ServiceCompat;
 
 public class LightService extends Service {
+    private static final String CHANNEL_ID = "AutoLightChannel";
     private static final int NOTIFICATION_ID = 1;
-    private static final String CHANNEL_ID = "AutoLightServiceChannel";
-
-    private MySettings settings;
     private LightControl lightControl;
-
-    private final BroadcastReceiver eventReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            if (action == null) return;
-
-            // 1. Update orientation state first
-            boolean isLandscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
-            lightControl.setLandscape(isLandscape);
-
-            // 2. Handle Custom UI Commands (Ping/Save)
-            if (Constants.SERVICE_INTENT_ACTION.equals(action)) {
-                int payload = intent.getIntExtra(Constants.SERVICE_INTENT_EXTRA, -1);
-                if (payload == Constants.SERVICE_INTENT_PAYLOAD_PING) {
-                    String status = "Lux: " + lightControl.getLastSensorValue() + 
-                                    " | Brightness: " + lightControl.getSetBrightness();
-                    Toast.makeText(context, status, Toast.LENGTH_SHORT).show();
-                } else if (payload == Constants.SERVICE_INTENT_PAYLOAD_SET) {
-                    lightControl.reconfigure();
-                }
-                return;
-            }
-
-            // 3. Handle System Events (Unlock/Rotate)
-            if (Intent.ACTION_USER_PRESENT.equals(action)) {
-                if (settings.mode == Constants.WORK_MODE_UNLOCK) {
-                    lightControl.onScreenUnlock();
-                }
-            } else if (Intent.ACTION_CONFIGURATION_CHANGED.equals(action)) {
-                // This handles Portrait/Landscape work modes
-                lightControl.startListening();
-            }
-        }
-    };
 
     @Override
     public void onCreate() {
         super.onCreate();
-        settings = new MySettings(this);
+        // Initialize your control logic
         lightControl = new LightControl(this);
-
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(Intent.ACTION_USER_PRESENT);
-        filter.addAction(Intent.ACTION_CONFIGURATION_CHANGED);
-        filter.addAction(Constants.SERVICE_INTENT_ACTION);
-        
-        // Priority filter for faster unlock response
-        filter.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(eventReceiver, filter, Context.RECEIVER_EXPORTED);
-        } else {
-            registerReceiver(eventReceiver, filter);
-        }
+        createNotificationChannel();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        createNotificationChannel();
-        
-        Notification.Builder builder = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ? 
-                new Notification.Builder(this, CHANNEL_ID) : new Notification.Builder(this);
-
-        Notification notification = builder
-                .setContentTitle("Auto Light Active")
-                .setContentText("Monitoring brightness modes")
-                .setSmallIcon(android.R.drawable.ic_menu_compass)
+        // 1. Build the Notification (Required for Android 8+)
+        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("Auto-Light Active")
+                .setContentText("Monitoring ambient light levels")
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setPriority(NotificationCompat.PRIORITY_LOW) // Minimal noise for user
                 .setOngoing(true)
                 .build();
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
-        } else {
-            startForeground(NOTIFICATION_ID, notification);
+        // 2. Start Foreground with compatibility for Android 14 (UPSIDE_DOWN_CAKE)
+        int foregroundType = 0;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            foregroundType = ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE;
         }
 
-        if (settings.mode == Constants.WORK_MODE_ALWAYS) {
-            lightControl.startListening();
+        try {
+            ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, foregroundType);
+        } catch (Exception e) {
+            // Log error if needed: Service failed to start in foreground
         }
 
+        // 3. Register your existing sensor logic
+        lightControl.register();
+
+        // START_STICKY ensures the OS attempts to restart the service if killed
         return START_STICKY;
     }
 
     private void createNotificationChannel() {
+        // Notification Channels are required for Android 8.0 and above
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "Light Service", NotificationManager.IMPORTANCE_LOW);
+            NotificationChannel serviceChannel = new NotificationChannel(
+                    CHANNEL_ID,
+                    "Auto-Light Background Service",
+                    NotificationManager.IMPORTANCE_LOW
+            );
+            serviceChannel.setDescription("Enables automatic brightness adjustment in the background.");
+            
             NotificationManager manager = getSystemService(NotificationManager.class);
-            if (manager != null) manager.createNotificationChannel(channel);
+            if (manager != null) {
+                manager.createNotificationChannel(serviceChannel);
+            }
         }
     }
 
     @Override
     public void onDestroy() {
-        lightControl.stopListening();
-        unregisterReceiver(eventReceiver);
+        // Clean up sensors to save battery
+        if (lightControl != null) {
+            lightControl.unregister();
+        }
         super.onDestroy();
     }
 
     @Override
-    public IBinder onBind(Intent intent) { return null; }
+    public IBinder onBind(Intent intent) {
+        return null; // This is a started service, not a bound one
+    }
 }

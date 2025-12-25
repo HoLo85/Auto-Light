@@ -31,7 +31,7 @@ To provide reliable system control without compromising privacy, Auto Light uses
 
 # Installation
 
-<a href="https://github.com/The-First-King/Auto-Light/releases"><img src="images/GitHub.png" alt="Get it on GitHub" height="90"></a>
+<a href="https://github.com/The-First-King/Auto-Light/releases"><img src="images/GitHub.png" alt="Get it on GitHub" height="60"></a>
 <a href="https://apt.izzysoft.de/packages/com.mine.autolight"><img src="images/IzzyOnDroid.png" alt="Get it at IzzyOnDroid" height="60"></a>
 
 ---

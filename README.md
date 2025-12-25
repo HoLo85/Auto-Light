@@ -34,6 +34,9 @@ To provide reliable system control without compromising privacy, Auto Light uses
 <a href="https://github.com/The-First-King/Auto-Light/releases">
   <img src="images/GitHub.png" alt="Get it on GitHub" height="80">
 </a>
+<a href="https://apt.izzysoft.de/packages/com.mine.autolight">
+  <img src="images/IzzyOnDroid.png" alt="Get it at IzzyOnDroid" height="80">
+</a>
 
 ---
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.

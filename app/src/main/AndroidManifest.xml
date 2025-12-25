@@ -4,11 +4,9 @@
     package="com.mine.autolight">
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
@@ -35,7 +33,7 @@
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Adjusts screen brightness based on ambient light sensor data to improve accessibility and battery life." />
+                android:value="Adjusts brightness based on ambient light sensor to improve screen visibility and battery efficiency." />
         </service>
 
         <receiver

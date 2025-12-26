@@ -41,8 +41,6 @@ public class LightControl implements SensorEventListener {
             lux = event.values[0];
             setBrightness((int) lux);
             
-            // If we are in UNLOCK mode, we stop immediately after getting a value
-            // to save battery, rather than waiting for the timer.
             if (sett.mode == Constants.WORK_MODE_UNLOCK) {
                 stopListening();
             }
@@ -91,7 +89,6 @@ public class LightControl implements SensorEventListener {
 
     private void setBrightness(int luxValue) {
         int brightness;
-        // ... (Logarithmic interpolation logic) ...
         if (luxValue <= sett.l1) brightness = sett.b1;
         else if (luxValue >= sett.l4) brightness = sett.b4;
         else {
@@ -132,7 +129,6 @@ public class LightControl implements SensorEventListener {
                     Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL);
         } catch (Exception ignored) {}
         
-        // Ensure we clear timers and force start
         onListen = false; 
         startListening();
     }

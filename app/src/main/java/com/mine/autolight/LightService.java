@@ -4,63 +4,110 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
+import android.content.res.Configuration;
 import android.os.Build;
 import android.os.IBinder;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.ServiceCompat;
+import android.widget.Toast;
 
 public class LightService extends Service {
-    private static final String CHANNEL_ID = "AutoLightChannel";
+    private static final int NOTIFICATION_ID = 1;
+    private static final String CHANNEL_ID = "AutoLightServiceChannel";
+
+    private MySettings settings;
     private LightControl lightControl;
-    
-    // Flag for MainActivity to check status
-    public static boolean isRunning = false;
+
+    private final BroadcastReceiver eventReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (action == null) return;
+
+            // 1. Update orientation state first
+            boolean isLandscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+            lightControl.setLandscape(isLandscape);
+
+            // 2. Handle Custom UI Commands (Ping/Save)
+            if (Constants.SERVICE_INTENT_ACTION.equals(action)) {
+                int payload = intent.getIntExtra(Constants.SERVICE_INTENT_EXTRA, -1);
+                if (payload == Constants.SERVICE_INTENT_PAYLOAD_PING) {
+                    String status = "Lux: " + lightControl.getLastSensorValue() + 
+                                    " | Brightness: " + lightControl.getSetBrightness();
+                    Toast.makeText(context, status, Toast.LENGTH_SHORT).show();
+                } else if (payload == Constants.SERVICE_INTENT_PAYLOAD_SET) {
+                    lightControl.reconfigure();
+                }
+                return;
+            }
+
+            // 3. Handle System Events (Unlock/Rotate)
+            if (Intent.ACTION_USER_PRESENT.equals(action)) {
+                if (settings.mode == Constants.WORK_MODE_UNLOCK) {
+                    lightControl.onScreenUnlock();
+                }
+            } else if (Intent.ACTION_CONFIGURATION_CHANGED.equals(action)) {
+                // This handles Portrait/Landscape work modes
+                lightControl.startListening();
+            }
+        }
+    };
 
     @Override
     public void onCreate() {
         super.onCreate();
-        isRunning = true;
+        settings = new MySettings(this);
         lightControl = new LightControl(this);
-        createNotificationChannel();
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_USER_PRESENT);
+        filter.addAction(Intent.ACTION_CONFIGURATION_CHANGED);
+        filter.addAction(Constants.SERVICE_INTENT_ACTION);
+        
+        // Priority filter for faster unlock response
+        filter.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(eventReceiver, filter, Context.RECEIVER_EXPORTED);
+        } else {
+            registerReceiver(eventReceiver, filter);
+        }
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("Auto-Light Active")
-                .setContentText("Monitoring light levels...")
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
+        createNotificationChannel();
+        
+        Notification.Builder builder = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ? 
+                new Notification.Builder(this, CHANNEL_ID) : new Notification.Builder(this);
+
+        Notification notification = builder
+                .setContentTitle("Auto Light Active")
+                .setContentText("Monitoring brightness modes")
+                .setSmallIcon(android.R.drawable.ic_menu_compass)
                 .setOngoing(true)
                 .build();
 
-        int type = 0;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            type = ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+        } else {
+            startForeground(NOTIFICATION_ID, notification);
         }
 
-        try {
-            ServiceCompat.startForeground(this, 1, notification, type);
-        } catch (Exception e) {
-            isRunning = false;
-            stopSelf();
+        if (settings.mode == Constants.WORK_MODE_ALWAYS) {
+            lightControl.startListening();
         }
 
-        // Make sure LightControl has these method names
-        if (lightControl != null) {
-            lightControl.register(); 
-        }
-        
         return START_STICKY;
     }
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "Light Service Channel",
-                    NotificationManager.IMPORTANCE_LOW);
+                    CHANNEL_ID, "Light Service", NotificationManager.IMPORTANCE_LOW);
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) manager.createNotificationChannel(channel);
         }
@@ -68,10 +115,8 @@ public class LightService extends Service {
 
     @Override
     public void onDestroy() {
-        isRunning = false;
-        if (lightControl != null) {
-            lightControl.unregister();
-        }
+        lightControl.stopListening();
+        unregisterReceiver(eventReceiver);
         super.onDestroy();
     }
 

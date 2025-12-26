@@ -168,10 +168,6 @@ public class MainActivity extends Activity {
         stopService(new Intent(this, LightService.class));
     }
 
-    /**
-     * Optimized Service Check
-     * Accesses the static boolean from LightService instead of looping through all system services.
-     */
     private boolean isServiceRunning() {
         return LightService.isRunning;
     }

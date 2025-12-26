@@ -8,7 +8,7 @@ public class Constants {
 
 	public static final String SERVICE_INTENT_ACTION = "Light command";
 	public static final String SERVICE_INTENT_EXTRA = "reconfigure";
-	public static final String SERVICE_INTENT_EXTRA_TAP = "notification_tap";
+	public static final String PREF_SERVICE_ENABLED = "pref_service_enabled";
 
 	public static final int SERVICE_INTENT_PAYLOAD_PING = 0;
 	public static final int SERVICE_INTENT_PAYLOAD_SET = 1;

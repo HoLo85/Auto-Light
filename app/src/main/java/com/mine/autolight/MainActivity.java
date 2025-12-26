@@ -76,10 +76,6 @@ public class MainActivity extends Activity {
             sendBroadcastToService(Constants.SERVICE_INTENT_PAYLOAD_PING);
         });
 
-        // UI for Battery Optimization request removed to match Manifest
-        Button btnRequest = findViewById(R.id.btn_request);
-        if (btnRequest != null) btnRequest.setVisibility(View.GONE);
-
         etSensor1 = findViewById(R.id.et_sensor_value_1);
         etSensor2 = findViewById(R.id.et_sensor_value_2);
         etSensor3 = findViewById(R.id.et_sensor_value_3);
@@ -162,9 +158,6 @@ public class MainActivity extends Activity {
             }
             displayServiceStatus(isServiceRunning() ? 1 : 0);
         }
-
-        LinearLayout llPower = findViewById(R.id.ll_ignore_battery_request);
-        if (llPower != null) llPower.setVisibility(View.GONE);
     }
 
     private void runService() {

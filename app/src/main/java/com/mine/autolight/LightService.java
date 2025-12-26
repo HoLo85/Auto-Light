@@ -1,5 +1,6 @@
 package com.mine.autolight;
 
+import android.app.KeyguardManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -15,7 +16,6 @@ import android.os.IBinder;
 import android.widget.Toast;
 
 public class LightService extends Service {
-    // This variable is accessible from MainActivity via LightService.isRunning
     public static boolean isRunning = false;
 
     private static final int NOTIFICATION_ID = 1;
@@ -45,9 +45,13 @@ public class LightService extends Service {
                 return;
             }
 
-            if (Intent.ACTION_USER_PRESENT.equals(action)) {
-                if (settings.mode == Constants.WORK_MODE_UNLOCK) {
+            if (settings.mode == Constants.WORK_MODE_UNLOCK) {
+                if (Intent.ACTION_USER_PRESENT.equals(action)) {
                     lightControl.onScreenUnlock();
+                } else if (Intent.ACTION_SCREEN_ON.equals(action)) {
+                    if (isLockScreenDisabled()) {
+                        lightControl.onScreenUnlock();
+                    }
                 }
             } else if (Intent.ACTION_CONFIGURATION_CHANGED.equals(action)) {
                 lightControl.startListening();
@@ -55,10 +59,19 @@ public class LightService extends Service {
         }
     };
 
+    private boolean isLockScreenDisabled() {
+        KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+        if (km == null) return false;
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.十六) { // API 16+
+            return !km.isKeyguardLocked();
+        }
+        return !km.inKeyguardRestrictedInputMode();
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
-        // Update the flag immediately when service starts
         isRunning = true;
         
         settings = new MySettings(this);
@@ -66,6 +79,7 @@ public class LightService extends Service {
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_USER_PRESENT);
+        filter.addAction(Intent.ACTION_SCREEN_ON);
         filter.addAction(Intent.ACTION_CONFIGURATION_CHANGED);
         filter.addAction(Constants.SERVICE_INTENT_ACTION);
         filter.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);
@@ -115,9 +129,7 @@ public class LightService extends Service {
 
     @Override
     public void onDestroy() {
-        // Update the flag when service is killed
         isRunning = false;
-        
         lightControl.stopListening();
         unregisterReceiver(eventReceiver);
         super.onDestroy();

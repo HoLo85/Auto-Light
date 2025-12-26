@@ -16,8 +16,6 @@
     <string name="sensor_c">Sensor:</string>
     <string name="save_settings">Save settings</string>
     <string name="permission_request">This app requires permission to control screen brightness.\nSelect \"Auto Light\" and allow it to modify system settings.</string>
-    <string name="dontkillmyapp_link" translatable="false"><a href="https://dontkillmyapp.com/">https://dontkillmyapp.com/</a></string>
-    <string name="if_not_work">If app stops working after some time of inactivity, try vendor-specific solution:</string>
     <string name="starting_service">Starting service</string>
     <string name="m_landscape">Landscape only</string>
 </resources>

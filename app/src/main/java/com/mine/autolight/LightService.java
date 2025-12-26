@@ -61,12 +61,9 @@ public class LightService extends Service {
 
     private boolean isLockScreenDisabled() {
         KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
-        if (km == null) return false;
+        if (km == null) return true;
         
-        if (Build.VERSION.SDK_INT >= 16) {
-            return !km.isKeyguardLocked();
-        }
-        return !km.inKeyguardRestrictedInputMode();
+        return !km.isKeyguardLocked();
     }
 
     @Override

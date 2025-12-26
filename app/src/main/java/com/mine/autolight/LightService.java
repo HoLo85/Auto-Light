@@ -11,15 +11,11 @@ import android.os.IBinder;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.ServiceCompat;
 
-/**
- * Service that runs in the foreground to monitor ambient light.
- * Optimized for Android 15 (API 35).
- */
 public class LightService extends Service {
     private static final String CHANNEL_ID = "AutoLightChannel";
     private LightControl lightControl;
-
-    // Static boolean allows MainActivity to check status instantly
+    
+    // Flag for MainActivity to check status
     public static boolean isRunning = false;
 
     @Override
@@ -32,7 +28,6 @@ public class LightService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // Build the required Foreground Notification
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Auto-Light Active")
                 .setContentText("Monitoring light levels...")
@@ -41,40 +36,33 @@ public class LightService extends Service {
                 .setOngoing(true)
                 .build();
 
-        // Handle Foreground Service Types for Android 14+
         int type = 0;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             type = ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE;
         }
 
         try {
-            // ServiceCompat handles the internal plumbing for different Android versions
             ServiceCompat.startForeground(this, 1, notification, type);
         } catch (Exception e) {
-            // If the service fails to start as foreground, we shouldn't keep it alive
             isRunning = false;
             stopSelf();
         }
 
+        // Make sure LightControl has these method names
         if (lightControl != null) {
-            lightControl.register();
+            lightControl.register(); 
         }
-
-        // START_STICKY ensures the OS attempts to restart the service if it's killed for memory
+        
         return START_STICKY;
     }
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, 
-                    "Light Service Channel",
+                    CHANNEL_ID, "Light Service Channel",
                     NotificationManager.IMPORTANCE_LOW);
-            
             NotificationManager manager = getSystemService(NotificationManager.class);
-            if (manager != null) {
-                manager.createNotificationChannel(channel);
-            }
+            if (manager != null) manager.createNotificationChannel(channel);
         }
     }
 
@@ -88,7 +76,5 @@ public class LightService extends Service {
     }
 
     @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
+    public IBinder onBind(Intent intent) { return null; }
 }

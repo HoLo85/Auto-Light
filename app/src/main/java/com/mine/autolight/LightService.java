@@ -63,7 +63,7 @@ public class LightService extends Service {
         KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
         if (km == null) return false;
         
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.十六) { // API 16+
+        if (Build.VERSION.SDK_INT >= 16) {
             return !km.isKeyguardLocked();
         }
         return !km.inKeyguardRestrictedInputMode();

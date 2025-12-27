@@ -10,7 +10,6 @@ import android.util.Log;
 public class AutoStart extends BroadcastReceiver {
     private static final String TAG = "AutoStartReceiver";
     
-    // This MUST match the string used in your updated MainActivity
     private static final String PREF_ENABLED = "service_enabled_by_user";
     private static final String PREFS_NAME = "AutoLightPrefs";
 
@@ -18,7 +17,6 @@ public class AutoStart extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         if (intent != null && Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
             
-            // Check if the user actually wants the service running
             SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
             boolean isEnabled = prefs.getBoolean(PREF_ENABLED, true); // Default to true for first-time use
 
@@ -32,7 +30,6 @@ public class AutoStart extends BroadcastReceiver {
             Intent serviceIntent = new Intent(context, LightService.class);
 
             try {
-                // Android 8.0 (Oreo) and above requires startForegroundService
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     context.startForegroundService(serviceIntent);
                 } else {

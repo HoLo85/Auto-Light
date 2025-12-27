@@ -15,7 +15,6 @@ import android.os.IBinder;
 import android.widget.Toast;
 
 public class LightService extends Service {
-    // This variable is accessible from MainActivity via LightService.isRunning
     public static boolean isRunning = false;
 
     private static final int NOTIFICATION_ID = 1;
@@ -58,7 +57,6 @@ public class LightService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        // Update the flag immediately when service starts
         isRunning = true;
         
         settings = new MySettings(this);
@@ -115,7 +113,6 @@ public class LightService extends Service {
 
     @Override
     public void onDestroy() {
-        // Update the flag when service is killed
         isRunning = false;
         
         lightControl.stopListening();

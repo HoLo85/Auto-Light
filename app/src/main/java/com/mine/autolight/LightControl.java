@@ -9,7 +9,6 @@ import android.hardware.SensorManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
-
 import java.util.LinkedList;
 
 public class LightControl implements SensorEventListener {
@@ -23,15 +22,15 @@ public class LightControl implements SensorEventListener {
 
     private boolean onListen = false;
     private boolean landscape = false;
+    private boolean needsImmediateUpdate = false; 
 
     private float lux = 0;
     private int tempBrightness = 0;
 
-    // --- Smoothing Variables ---
     private final LinkedList<SensorReading> buffer = new LinkedList<>();
-    private final long WINDOW_MS = 3000;              // 3 second smoothing window
-    private final float HYSTERESIS_THRESHOLD = 0.15f; // 15% change required to update
-    private float lastAppliedLux = -1;                // Track the currently set lux level
+    private final long WINDOW_MS = 3000;
+    private final float HYSTERESIS_THRESHOLD = 0.15f;
+    private float lastAppliedLux = -1;
 
     LightControl(Context context) {
         sett = new MySettings(context);
@@ -50,15 +49,19 @@ public class LightControl implements SensorEventListener {
             long now = System.currentTimeMillis();
 
             buffer.addLast(new SensorReading(now, rawLux));
-            
             while (!buffer.isEmpty() && (now - buffer.getFirst().time) > WINDOW_MS) {
                 buffer.removeFirst();
             }
 
-            if (sett.mode == Constants.WORK_MODE_UNLOCK) {
+            // Trigger instant update if flag is set OR in UNLOCK mode
+            if (needsImmediateUpdate || sett.mode == Constants.WORK_MODE_UNLOCK) {
                 lux = rawLux;
                 setBrightness((int) lux);
-                stopListening();
+                needsImmediateUpdate = false; 
+                
+                if (sett.mode == Constants.WORK_MODE_UNLOCK) {
+                    stopListening();
+                }
             } else {
                 processSmoothedLux();
             }
@@ -88,10 +91,24 @@ public class LightControl implements SensorEventListener {
         lastAppliedLux = luxVal;
     }
 
+    // Called by Service when SCREEN_OFF is detected
+    public void prepareForScreenOn() {
+        needsImmediateUpdate = true;
+        lastAppliedLux = -1;
+        buffer.clear();
+        // Start listening so we are ready for the first photon on wake
+        startListening(); 
+    }
+
     private void scheduleSuspend() {
         if (sett.mode == Constants.WORK_MODE_ALWAYS) return;
-        if (sett.mode == Constants.WORK_MODE_LANDSCAPE && landscape) return;
-        if (sett.mode == Constants.WORK_MODE_PORTRAIT && !landscape) return;
+        
+        // If we are just doing a one-shot update for Screen On, 
+        // we must allow it to suspend after the 'pause' delay.
+        if (!needsImmediateUpdate) {
+            if (sett.mode == Constants.WORK_MODE_LANDSCAPE && landscape) return;
+            if (sett.mode == Constants.WORK_MODE_PORTRAIT && !landscape) return;
+        }
 
         delayer.removeCallbacksAndMessages(null);
         delayer.postDelayed(this::stopListening, pause);
@@ -100,28 +117,20 @@ public class LightControl implements SensorEventListener {
     public void startListening() {
         boolean shouldActivate = false;
 
-        // Strict validation: Only activate if mode matches current orientation
-        if (sett.mode == Constants.WORK_MODE_ALWAYS) {
-            shouldActivate = true;
-        } else if (sett.mode == Constants.WORK_MODE_LANDSCAPE) {
-            if (landscape) shouldActivate = true;
-        } else if (sett.mode == Constants.WORK_MODE_PORTRAIT) {
-            if (!landscape) shouldActivate = true;
-        } else if (sett.mode == Constants.WORK_MODE_UNLOCK) {
-            shouldActivate = true;
-        }
+        if (needsImmediateUpdate) shouldActivate = true;
+        else if (sett.mode == Constants.WORK_MODE_ALWAYS) shouldActivate = true;
+        else if (sett.mode == Constants.WORK_MODE_LANDSCAPE && landscape) shouldActivate = true;
+        else if (sett.mode == Constants.WORK_MODE_PORTRAIT && !landscape) shouldActivate = true;
+        else if (sett.mode == Constants.WORK_MODE_UNLOCK) shouldActivate = true;
 
         if (shouldActivate) {
             delayer.removeCallbacksAndMessages(null);
             if (!onListen && lightSensor != null) {
-                buffer.clear();
-                lastAppliedLux = -1;
                 sMgr.registerListener(this, lightSensor, SensorManager.SENSOR_DELAY_NORMAL);
                 onListen = true;
             }
             scheduleSuspend();
         } else {
-            // If orientation changed and we no longer match the mode, stop immediately
             stopListening();
         }
     }
@@ -132,7 +141,7 @@ public class LightControl implements SensorEventListener {
             onListen = false;
         }
         delayer.removeCallbacksAndMessages(null);
-        buffer.clear();
+        // We do NOT clear needsImmediateUpdate here so the flag survives until the first sensor hit
     }
 
     private void setBrightness(int luxValue) {
@@ -148,7 +157,6 @@ public class LightControl implements SensorEventListener {
             double lx = Math.log10((double) luxValue + 1.0);
             double lx1 = Math.log10((double) x1 + 1.0);
             double lx2 = Math.log10((double) x2 + 1.0);
-
             double t = (lx2 - lx1 == 0) ? 0 : (lx - lx1) / (lx2 - lx1);
             t = Math.max(0.0, Math.min(1.0, t));
             brightness = (int) Math.round(y1 + (y2 - y1) * t);
@@ -174,10 +182,7 @@ public class LightControl implements SensorEventListener {
             Settings.System.putInt(cResolver, Settings.System.SCREEN_BRIGHTNESS_MODE,
                     Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL);
         } catch (Exception ignored) {}
-        
-        lastAppliedLux = -1;
-        buffer.clear();
-        onListen = false; 
+        needsImmediateUpdate = true; 
         startListening();
     }
 

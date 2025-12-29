@@ -11,7 +11,7 @@ For a proper function, it requires to disable the built-in Android Adaptive Brig
 The app utilizes a four-point non-linear mapping model to create a smooth brightness curve. If the predefined settings do not meet your requirements, it allows you to set intermediate points for four distinct ambient light levels and their corresponding intensities. The app then calculates the optimal intermediate values to ensure a smooth, predictable transition.
 
 <div align="center">
-<img src="https://github.com/The-First-King/Auto-Light/blob/master/metadata/en-US/images/phoneScreenshots/01.png?raw=true" alt="App settings" />
+<img src="https://github.com/The-First-King/Auto-Light/blob/master/metadata/en-US/images/phoneScreenshots/01.png?raw=true" alt="App settings" width="405" />
 </div>
 
 The main intended working mode is “On screen unlock/rotate” where the app captures ambient light data only during specific triggers (like unlocking or rotating). This sets your brightness once, preventing the “flickering” or “hunting” common with standard auto-brightness.

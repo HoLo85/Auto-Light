@@ -64,6 +64,7 @@ public class LightService extends Service {
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_USER_PRESENT);
+		filter.addAction(Intent.ACTION_SCREEN_ON); 
         filter.addAction(Intent.ACTION_CONFIGURATION_CHANGED);
         filter.addAction(Constants.SERVICE_INTENT_ACTION);
         filter.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);

@@ -16,7 +16,6 @@ import android.widget.Toast;
 
 public class LightService extends Service {
     public static boolean isRunning = false;
-
     private static final int NOTIFICATION_ID = 1;
     private static final String CHANNEL_ID = "AutoLightServiceChannel";
 
@@ -29,6 +28,7 @@ public class LightService extends Service {
             String action = intent.getAction();
             if (action == null) return;
 
+            // Update landscape state immediately on any event
             boolean isLandscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
             lightControl.setLandscape(isLandscape);
 
@@ -44,11 +44,13 @@ public class LightService extends Service {
                 return;
             }
 
-            if (Intent.ACTION_USER_PRESENT.equals(action)) {
+            // Check for Unlock OR Screen On
+            if (Intent.ACTION_USER_PRESENT.equals(action) || Intent.ACTION_SCREEN_ON.equals(action)) {
                 if (settings.mode == Constants.WORK_MODE_UNLOCK) {
                     lightControl.onScreenUnlock();
                 }
             } else if (Intent.ACTION_CONFIGURATION_CHANGED.equals(action)) {
+                // Re-evaluate listening state based on new orientation
                 lightControl.startListening();
             }
         }
@@ -58,13 +60,12 @@ public class LightService extends Service {
     public void onCreate() {
         super.onCreate();
         isRunning = true;
-        
         settings = new MySettings(this);
         lightControl = new LightControl(this);
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_USER_PRESENT);
-		filter.addAction(Intent.ACTION_SCREEN_ON); 
+        filter.addAction(Intent.ACTION_SCREEN_ON); 
         filter.addAction(Intent.ACTION_CONFIGURATION_CHANGED);
         filter.addAction(Constants.SERVICE_INTENT_ACTION);
         filter.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);
@@ -96,6 +97,10 @@ public class LightService extends Service {
             startForeground(NOTIFICATION_ID, notification);
         }
 
+        // Initialize orientation state on start
+        boolean isLandscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+        lightControl.setLandscape(isLandscape);
+
         if (settings.mode == Constants.WORK_MODE_ALWAYS) {
             lightControl.startListening();
         }
@@ -115,7 +120,6 @@ public class LightService extends Service {
     @Override
     public void onDestroy() {
         isRunning = false;
-        
         lightControl.stopListening();
         unregisterReceiver(eventReceiver);
         super.onDestroy();

@@ -49,43 +49,34 @@ public class LightControl implements SensorEventListener {
             float rawLux = event.values[0];
             long now = System.currentTimeMillis();
 
-            // 1. Add current reading to buffer
             buffer.addLast(new SensorReading(now, rawLux));
             
-            // 2. Prune data older than the WINDOW_MS
             while (!buffer.isEmpty() && (now - buffer.getFirst().time) > WINDOW_MS) {
                 buffer.removeFirst();
             }
 
-            // 3. Handle Work Modes
             if (sett.mode == Constants.WORK_MODE_UNLOCK) {
-                // For "Unlock" mode, we want immediate action, skipping smoothing.
                 lux = rawLux;
                 setBrightness((int) lux);
                 stopListening();
             } else {
-                // For "Always" or Orientation modes, apply Smoothing + Hysteresis
                 processSmoothedLux();
             }
         }
     }
 
     private void processSmoothedLux() {
-        // Fast Start: If this is the first reading since start/unlock, apply immediately
         if (lastAppliedLux == -1 && !buffer.isEmpty()) {
             lux = buffer.getLast().value;
             applyAndRecord(lux);
             return;
         }
 
-        // Calculate Average of the buffer
         float sum = 0;
         for (SensorReading r : buffer) sum += r.value;
         float averageLux = sum / buffer.size();
 
-        // Hysteresis Gate: Check if the change is significant enough to act
         float diff = Math.abs(averageLux - lastAppliedLux);
-        // Requirement: > 15% change OR > 5 lux difference (to handle very low light shifts)
         if (diff > (lastAppliedLux * HYSTERESIS_THRESHOLD) || diff > 5) {
             lux = averageLux;
             applyAndRecord(lux);
@@ -109,23 +100,29 @@ public class LightControl implements SensorEventListener {
     public void startListening() {
         boolean shouldActivate = false;
 
-        if (sett.mode == Constants.WORK_MODE_ALWAYS) shouldActivate = true;
-        else if (sett.mode == Constants.WORK_MODE_LANDSCAPE && landscape) shouldActivate = true;
-        else if (sett.mode == Constants.WORK_MODE_PORTRAIT && !landscape) shouldActivate = true;
-        else if (sett.mode == Constants.WORK_MODE_UNLOCK) shouldActivate = true;
+        // Strict validation: Only activate if mode matches current orientation
+        if (sett.mode == Constants.WORK_MODE_ALWAYS) {
+            shouldActivate = true;
+        } else if (sett.mode == Constants.WORK_MODE_LANDSCAPE) {
+            if (landscape) shouldActivate = true;
+        } else if (sett.mode == Constants.WORK_MODE_PORTRAIT) {
+            if (!landscape) shouldActivate = true;
+        } else if (sett.mode == Constants.WORK_MODE_UNLOCK) {
+            shouldActivate = true;
+        }
 
         if (shouldActivate) {
             delayer.removeCallbacksAndMessages(null);
-            
             if (!onListen && lightSensor != null) {
-                // Ensure state is clean for a fresh listener start
                 buffer.clear();
                 lastAppliedLux = -1;
-                
                 sMgr.registerListener(this, lightSensor, SensorManager.SENSOR_DELAY_NORMAL);
                 onListen = true;
             }
             scheduleSuspend();
+        } else {
+            // If orientation changed and we no longer match the mode, stop immediately
+            stopListening();
         }
     }
 
@@ -140,7 +137,6 @@ public class LightControl implements SensorEventListener {
 
     private void setBrightness(int luxValue) {
         int brightness;
-        // Logic using Custom Curves from MySettings.java file
         if (luxValue <= sett.l1) brightness = sett.b1;
         else if (luxValue >= sett.l4) brightness = sett.b4;
         else {
@@ -157,9 +153,7 @@ public class LightControl implements SensorEventListener {
             t = Math.max(0.0, Math.min(1.0, t));
             brightness = (int) Math.round(y1 + (y2 - y1) * t);
         }
-
         tempBrightness = brightness;
-
         try {
             Settings.System.putInt(cResolver, Settings.System.SCREEN_BRIGHTNESS, brightness);
         } catch (Exception ignored) {}
@@ -175,19 +169,14 @@ public class LightControl implements SensorEventListener {
         this.landscape = land;
     }
 
-    /**
-     * Called when the screen turns on or the user unlocks the device.
-     */
     public void onScreenUnlock() {
         try {
             Settings.System.putInt(cResolver, Settings.System.SCREEN_BRIGHTNESS_MODE,
                     Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL);
         } catch (Exception ignored) {}
         
-        // Reset smoothing state to ensure the first reading after screen-on is instant
         lastAppliedLux = -1;
         buffer.clear();
-        
         onListen = false; 
         startListening();
     }

@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 
 public class MySettings {
+
     private final Context context;
     private SharedPreferences sharedPref;
 
@@ -16,7 +17,7 @@ public class MySettings {
     }
 
     public void load() {
-        sharedPref = context.getSharedPreferences("mine.autolight", Context.MODE_PRIVATE);
+        sharedPref = context.getSharedPreferences(Constants.SETTINGS_PREFS_NAME, Context.MODE_PRIVATE);
 
         l1 = sharedPref.getInt("l1", 1);
         l2 = sharedPref.getInt("l2", 100);
@@ -49,4 +50,3 @@ public class MySettings {
         editor.apply();
     }
 }
-

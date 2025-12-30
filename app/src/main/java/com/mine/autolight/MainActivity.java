@@ -28,8 +28,6 @@ public class MainActivity extends Activity {
     private boolean isExpanded = false;
     private boolean isDialogShown = false;
 
-    private static final String PREF_ENABLED = "service_enabled_by_user";
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -56,8 +54,8 @@ public class MainActivity extends Activity {
         });
 
         tvState = findViewById(R.id.tv_service_state);
-
         btnStart = findViewById(R.id.btn_start_stop);
+
         btnStart.setOnClickListener(v -> {
             if (isServiceRunning()) {
                 setServiceEnabledPref(false);
@@ -103,6 +101,7 @@ public class MainActivity extends Activity {
 
                 sett.save();
                 sendBroadcastToService(Constants.SERVICE_INTENT_PAYLOAD_SET);
+
                 Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show();
             } catch (NumberFormatException e) {
                 Toast.makeText(this, "Invalid input", Toast.LENGTH_SHORT).show();
@@ -120,7 +119,7 @@ public class MainActivity extends Activity {
         if (sett.mode == Constants.WORK_MODE_UNLOCK) rbWUnlock.setChecked(true);
 
         RadioGroup rgWorkMode = findViewById(R.id.rg_work_mode);
-        rgWorkMode.setOnCheckedChangeListener((group, checkedId) -> {
+        rgWorkMode.setOnCheckedChangeListener((radioGroup, checkedId) -> {
             if (checkedId == R.id.rb_work_always) sett.mode = Constants.WORK_MODE_ALWAYS;
             if (checkedId == R.id.rb_work_portrait) sett.mode = Constants.WORK_MODE_PORTRAIT;
             if (checkedId == R.id.rb_work_landscape) sett.mode = Constants.WORK_MODE_LANDSCAPE;
@@ -149,6 +148,7 @@ public class MainActivity extends Activity {
     @Override
     public void onResume() {
         super.onResume();
+
         if (checkAndRequestPermissions()) {
             if (!isServiceRunning() && getServiceEnabledPref()) {
                 runService();
@@ -158,13 +158,13 @@ public class MainActivity extends Activity {
     }
 
     private void setServiceEnabledPref(boolean enabled) {
-        SharedPreferences prefs = getSharedPreferences("AutoLightPrefs", MODE_PRIVATE);
-        prefs.edit().putBoolean(PREF_ENABLED, enabled).apply();
+        SharedPreferences prefs = getSharedPreferences(Constants.PREFS_NAME, MODE_PRIVATE);
+        prefs.edit().putBoolean(Constants.PREF_ENABLED_KEY, enabled).apply();
     }
 
     private boolean getServiceEnabledPref() {
-        SharedPreferences prefs = getSharedPreferences("AutoLightPrefs", MODE_PRIVATE);
-        return prefs.getBoolean(PREF_ENABLED, true);
+        SharedPreferences prefs = getSharedPreferences(Constants.PREFS_NAME, MODE_PRIVATE);
+        return prefs.getBoolean(Constants.PREF_ENABLED_KEY, true);
     }
 
     private void runService() {
@@ -181,7 +181,6 @@ public class MainActivity extends Activity {
         return LightService.isRunning;
     }
 
-    // Best-practice: explicit broadcast to our app (mitigates implicit interception risk)
     private void sendBroadcastToService(int payload) {
         Intent i = new Intent(Constants.SERVICE_INTENT_ACTION);
         i.setPackage(getPackageName());
@@ -238,7 +237,7 @@ public class MainActivity extends Activity {
                 break;
             case -1:
                 tvState.setText(R.string.starting_service);
-                break;
+                               break;
         }
     }
 

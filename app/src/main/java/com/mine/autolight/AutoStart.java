@@ -8,36 +8,38 @@ import android.os.Build;
 import android.util.Log;
 
 public class AutoStart extends BroadcastReceiver {
+
     private static final String TAG = "AutoStartReceiver";
-    
-    private static final String PREF_ENABLED = "service_enabled_by_user";
-    private static final String PREFS_NAME = "AutoLightPrefs";
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        if (intent != null && Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
-            
-            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-            boolean isEnabled = prefs.getBoolean(PREF_ENABLED, true); // Default to true for first-time use
+        if (intent == null) return;
 
-            if (!isEnabled) {
-                Log.d(TAG, "Boot detected, but service is disabled by user. Doing nothing.");
-                return;
+        final String action = intent.getAction();
+        if (!Intent.ACTION_BOOT_COMPLETED.equals(action)
+                && !"android.intent.action.QUICKBOOT_POWERON".equals(action)) {
+            return;
+        }
+
+        SharedPreferences prefs = context.getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE);
+        boolean isEnabled = prefs.getBoolean(Constants.PREF_ENABLED_KEY, true);
+
+        if (!isEnabled) {
+            Log.d(TAG, "Boot detected, but service is disabled by user. Doing nothing.");
+            return;
+        }
+
+        Log.d(TAG, "Boot completed detected and service is enabled. Starting LightService...");
+        Intent serviceIntent = new Intent(context, LightService.class);
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(serviceIntent);
+            } else {
+                context.startService(serviceIntent);
             }
-
-            Log.d(TAG, "Boot completed detected and service is enabled. Starting LightService...");
-
-            Intent serviceIntent = new Intent(context, LightService.class);
-
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(serviceIntent);
-                } else {
-                    context.startService(serviceIntent);
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Failed to start service on boot: " + e.getMessage());
-            }
+        } catch (Exception e) {
+                       Log.e(TAG, "Failed to start service on boot: " + e.getMessage());
         }
     }
 }

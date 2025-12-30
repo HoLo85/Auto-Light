@@ -79,7 +79,6 @@ public class LightService extends Service {
         settings = new MySettings(this);
         lightControl = new LightControl(this);
 
-        // System broadcasts
         IntentFilter sys = new IntentFilter();
         sys.addAction(Intent.ACTION_SCREEN_ON);
         sys.addAction(Intent.ACTION_SCREEN_OFF);
@@ -87,14 +86,10 @@ public class LightService extends Service {
         sys.addAction(Intent.ACTION_CONFIGURATION_CHANGED);
         sys.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);
 
-        // Internal command broadcasts
         IntentFilter cmd = new IntentFilter(Constants.SERVICE_INTENT_ACTION);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // System broadcasts originate from system
             registerReceiver(systemReceiver, sys, Context.RECEIVER_EXPORTED);
-
-            // Internal commands should not be exported
             registerReceiver(commandReceiver, cmd, Context.RECEIVER_NOT_EXPORTED);
         } else {
             registerReceiver(systemReceiver, sys);
@@ -160,7 +155,7 @@ public class LightService extends Service {
     }
 
     @Override
-    public IBinder onBind(Intent intent) {
+    public IBinder onBind    public IBinder onBind(Intent intent) {
         return null;
     }
 }

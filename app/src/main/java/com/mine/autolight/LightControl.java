@@ -33,7 +33,7 @@ public class LightControl implements SensorEventListener {
     private static final float MIN_ABS_LUX_DELTA = 5f;
 
     // EMA
-    private static final long EMA_TAU_MS = 2500;
+    private static final long EMA_TAU_MS = 1500;
     private boolean hasEma = false;
     private float emaLux = 0f;
     private long lastEmaTimeMs = 0L;
@@ -227,4 +227,5 @@ public class LightControl implements SensorEventListener {
     public int getSetBrightness() {
         return tempBrightness;
     }
+
 }

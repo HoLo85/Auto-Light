@@ -28,7 +28,6 @@ public class MainActivity extends Activity {
     private boolean isExpanded = false;
     private boolean isDialogShown = false;
 
-    // Use a constant for the preference key
     private static final String PREF_ENABLED = "service_enabled_by_user";
 
     @Override
@@ -57,14 +56,15 @@ public class MainActivity extends Activity {
         });
 
         tvState = findViewById(R.id.tv_service_state);
+
         btnStart = findViewById(R.id.btn_start_stop);
         btnStart.setOnClickListener(arg0 -> {
             if (isServiceRunning()) {
-                setServiceEnabledPref(false); // Save that user wants it OFF
+                setServiceEnabledPref(false);
                 killService();
                 displayServiceStatus(0);
             } else {
-                setServiceEnabledPref(true); // Save that user wants it ON
+                setServiceEnabledPref(true);
                 runService();
                 displayServiceStatus(-1);
             }
@@ -95,6 +95,7 @@ public class MainActivity extends Activity {
                 sett.l2 = Integer.parseInt(etSensor2.getText().toString());
                 sett.l3 = Integer.parseInt(etSensor3.getText().toString());
                 sett.l4 = Integer.parseInt(etSensor4.getText().toString());
+
                 sett.b1 = Integer.parseInt(etBrightness1.getText().toString());
                 sett.b2 = Integer.parseInt(etBrightness2.getText().toString());
                 sett.b3 = Integer.parseInt(etBrightness3.getText().toString());
@@ -102,6 +103,7 @@ public class MainActivity extends Activity {
 
                 sett.save();
                 sendBroadcastToService(Constants.SERVICE_INTENT_PAYLOAD_SET);
+
                 Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show();
             } catch (NumberFormatException e) {
                 Toast.makeText(this, "Invalid input", Toast.LENGTH_SHORT).show();
@@ -148,8 +150,8 @@ public class MainActivity extends Activity {
     @Override
     public void onResume() {
         super.onResume();
+
         if (checkAndRequestPermissions()) {
-            // FIX: Only auto-start if the user hasn't explicitly stopped it
             if (!isServiceRunning() && getServiceEnabledPref()) {
                 runService();
             }
@@ -185,16 +187,16 @@ public class MainActivity extends Activity {
     }
 
     private void sendBroadcastToService(int payload) {
-        Intent i = new Intent();
+        Intent i = new Intent(Constants.SERVICE_INTENT_ACTION);
+        i.setPackage(getPackageName());
         i.putExtra(Constants.SERVICE_INTENT_EXTRA, payload);
-        i.setAction(Constants.SERVICE_INTENT_ACTION);
         sendBroadcast(i);
     }
 
     private void requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (this.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                this.requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 123);
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 123);
             }
         }
     }
@@ -204,6 +206,7 @@ public class MainActivity extends Activity {
             return true;
         } else {
             if (isDialogShown) return false;
+
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setMessage(R.string.permission_request);
             builder.setPositiveButton(R.string.settings, (dialog, id) -> {
@@ -213,6 +216,7 @@ public class MainActivity extends Activity {
                 isDialogShown = false;
             });
             builder.setCancelable(false).show();
+
             isDialogShown = true;
             return false;
         }
@@ -247,9 +251,9 @@ public class MainActivity extends Activity {
         etSensor2.setText(String.valueOf(sett.l2));
         etSensor3.setText(String.valueOf(sett.l3));
         etSensor4.setText(String.valueOf(sett.l4));
+
         etBrightness1.setText(String.valueOf(sett.b1));
         etBrightness2.setText(String.valueOf(sett.b2));
         etBrightness3.setText(String.valueOf(sett.b3));
         etBrightness4.setText(String.valueOf(sett.b4));
     }
-}

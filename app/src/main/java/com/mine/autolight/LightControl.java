@@ -8,28 +8,37 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.provider.Settings;
-import java.util.LinkedList;
 
 public class LightControl implements SensorEventListener {
+
     private final SensorManager sMgr;
     private final Sensor lightSensor;
     private final MySettings sett;
     private final ContentResolver cResolver;
-    
+
     private final Handler delayer = new Handler(Looper.getMainLooper());
     private final long pause = 2500;
 
     private boolean onListen = false;
     private boolean landscape = false;
-    private boolean needsImmediateUpdate = false; 
+    private boolean needsImmediateUpdate = false;
 
     private float lux = 0;
     private int tempBrightness = 0;
 
-    private final LinkedList<SensorReading> buffer = new LinkedList<>();
-    private final long WINDOW_MS = 3000;
-    private final float HYSTERESIS_THRESHOLD = 0.15f;
+    // --- Hysteresis settings (preserved) ---
+    private static final float HYSTERESIS_THRESHOLD = 0.15f; // 15% of last applied
+    private static final float MIN_ABS_LUX_DELTA = 5f;       // absolute minimum threshold
+
+    // --- EMA smoothing ---
+    private static final long EMA_TAU_MS = 2500;
+
+    private boolean hasEma = false;
+    private float emaLux = 0f;
+    private long lastEmaTimeMs = 0L;
+
     private float lastAppliedLux = -1;
 
     LightControl(Context context) {
@@ -40,63 +49,85 @@ public class LightControl implements SensorEventListener {
     }
 
     @Override
-    public void onAccuracyChanged(Sensor arg0, int arg1) {}
+    public void onAccuracyChanged(Sensor arg0, int arg1) { }
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if (event.sensor.getType() == Sensor.TYPE_LIGHT) {
-            float rawLux = event.values[0];
-            long now = System.currentTimeMillis();
+        if (event.sensor.getType() != Sensor.TYPE_LIGHT) return;
 
-            buffer.addLast(new SensorReading(now, rawLux));
-            while (!buffer.isEmpty() && (now - buffer.getFirst().time) > WINDOW_MS) {
-                buffer.removeFirst();
-            }
+        float rawLux = event.values[0];
+        long now = SystemClock.elapsedRealtime();
 
-            if (needsImmediateUpdate || sett.mode == Constants.WORK_MODE_UNLOCK) {
-                lux = rawLux;
-                setBrightness((int) lux);
-                
-                if (sett.mode == Constants.WORK_MODE_UNLOCK) {
-                    needsImmediateUpdate = false;
-                    stopListening();
-                } else if (needsImmediateUpdate) {
-                    needsImmediateUpdate = false; 
-                }
+        // Preserve: immediate updates (screen-on preparation) and unlock mode
+        if (needsImmediateUpdate || sett.mode == Constants.WORK_MODE_UNLOCK) {
+            lux = rawLux;
+            setBrightness((int) lux);
+
+            // Keep smoothing state consistent to avoid jumps when switching back
+            hasEma = true;
+            emaLux = rawLux;
+            lastEmaTimeMs = now;
+            lastAppliedLux = rawLux;
+
+            if (sett.mode == Constants.WORK_MODE_UNLOCK) {
+                // Preserve: Unlock mode applies once then stops listening
+                needsImmediateUpdate = false;
+                stopListening();
             } else {
-                processSmoothedLux();
+                // Consume the immediate-update flag
+                needsImmediateUpdate = false;
             }
-        }
-    }
-
-    private void processSmoothedLux() {
-        if (lastAppliedLux == -1 && !buffer.isEmpty()) {
-            lux = buffer.getLast().value;
-            applyAndRecord(lux);
             return;
         }
 
-        float sum = 0;
-        for (SensorReading r : buffer) sum += r.value;
-        float averageLux = sum / buffer.size();
+        // Continuous modes: EMA smoothing + hysteresis gate
+        float smoothed = updateEma(now, rawLux);
 
-        float diff = Math.abs(averageLux - lastAppliedLux);
-        if (diff > (lastAppliedLux * HYSTERESIS_THRESHOLD) || diff > 5) {
-            lux = averageLux;
-            applyAndRecord(lux);
+        if (shouldApply(smoothed)) {
+            lux = smoothed;
+            setBrightness((int) lux);
+            lastAppliedLux = smoothed;
         }
     }
 
-    private void applyAndRecord(float luxVal) {
-        setBrightness((int) luxVal);
-        lastAppliedLux = luxVal;
+    private void resetSmoothing(long nowMs) {
+        hasEma = false;
+        emaLux = 0f;
+        lastEmaTimeMs = nowMs;
+        lastAppliedLux = -1;
+    }
+
+    private float updateEma(long nowMs, float rawLux) {
+        if (!hasEma) {
+            hasEma = true;
+            emaLux = rawLux;
+            lastEmaTimeMs = nowMs;
+            return emaLux;
+        }
+
+        long dt = nowMs - lastEmaTimeMs;
+        if (dt <= 0) return emaLux;
+
+        // alpha = 1 - exp(-dt/tau)
+        float alpha = 1f - (float) Math.exp(-(double) dt / (double) EMA_TAU_MS);
+        emaLux = emaLux + alpha * (rawLux - emaLux);
+        lastEmaTimeMs = nowMs;
+
+        return emaLux;
+    }
+
+    private boolean shouldApply(float smoothedLux) {
+        if (lastAppliedLux < 0) return true; // first apply
+        float diff = Math.abs(smoothedLux - lastAppliedLux);
+        float rel = lastAppliedLux * HYSTERESIS_THRESHOLD;
+        float threshold = Math.max(rel, MIN_ABS_LUX_DELTA);
+        return diff > threshold;
     }
 
     public void prepareForScreenOn() {
         needsImmediateUpdate = true;
-        lastAppliedLux = -1;
-        buffer.clear();
-        startListening(); 
+        resetSmoothing(SystemClock.elapsedRealtime());
+        startListening();
     }
 
     private void scheduleSuspend() {
@@ -109,7 +140,7 @@ public class LightControl implements SensorEventListener {
     }
 
     public void startListening() {
-        boolean shouldActivate = false;
+        boolean shouldActivate;
 
         if (sett.mode == Constants.WORK_MODE_ALWAYS) {
             shouldActivate = true;
@@ -117,20 +148,23 @@ public class LightControl implements SensorEventListener {
             shouldActivate = landscape || needsImmediateUpdate;
         } else if (sett.mode == Constants.WORK_MODE_PORTRAIT) {
             shouldActivate = !landscape || needsImmediateUpdate;
-        } else if (sett.mode == Constants.WORK_MODE_UNLOCK) {
-            shouldActivate = true; 
+        } else { // WORK_MODE_UNLOCK
+            shouldActivate = true;
         }
 
         if (shouldActivate) {
             delayer.removeCallbacksAndMessages(null);
+
             if (!onListen && lightSensor != null) {
+                // Preserve "fresh" smoothing when waking / immediate update
                 if (sett.mode == Constants.WORK_MODE_UNLOCK || needsImmediateUpdate) {
-                    lastAppliedLux = -1;
-                    buffer.clear();
+                    resetSmoothing(SystemClock.elapsedRealtime());
                 }
+
                 sMgr.registerListener(this, lightSensor, SensorManager.SENSOR_DELAY_NORMAL);
                 onListen = true;
             }
+
             scheduleSuspend();
         } else {
             stopListening();
@@ -147,10 +181,12 @@ public class LightControl implements SensorEventListener {
 
     private void setBrightness(int luxValue) {
         int brightness;
+
         if (luxValue <= sett.l1) brightness = sett.b1;
         else if (luxValue >= sett.l4) brightness = sett.b4;
         else {
             float x1, y1, x2, y2;
+
             if (luxValue <= sett.l2) { x1 = sett.l1; x2 = sett.l2; y1 = sett.b1; y2 = sett.b2; }
             else if (luxValue <= sett.l3) { x1 = sett.l2; x2 = sett.l3; y1 = sett.b2; y2 = sett.b3; }
             else { x1 = sett.l3; x2 = sett.l4; y1 = sett.b3; y2 = sett.b4; }
@@ -158,14 +194,17 @@ public class LightControl implements SensorEventListener {
             double lx = Math.log10((double) luxValue + 1.0);
             double lx1 = Math.log10((double) x1 + 1.0);
             double lx2 = Math.log10((double) x2 + 1.0);
+
             double t = (lx2 - lx1 == 0) ? 0 : (lx - lx1) / (lx2 - lx1);
             t = Math.max(0.0, Math.min(1.0, t));
+
             brightness = (int) Math.round(y1 + (y2 - y1) * t);
         }
+
         tempBrightness = brightness;
         try {
             Settings.System.putInt(cResolver, Settings.System.SCREEN_BRIGHTNESS, brightness);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) { }
     }
 
     public void reconfigure() {
@@ -180,19 +219,21 @@ public class LightControl implements SensorEventListener {
 
     public void onScreenUnlock() {
         try {
-            Settings.System.putInt(cResolver, Settings.System.SCREEN_BRIGHTNESS_MODE,
-                    Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL);
-        } catch (Exception ignored) {}
-        needsImmediateUpdate = true; 
+            Settings.System.putInt(
+                    cResolver,
+                    Settings.System.SCREEN_BRIGHTNESS_MODE,
+                    Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL
+            );
+               } catch (Exception ignored) { }
+
+        needsImmediateUpdate = true;
         startListening();
     }
 
-    public int getLastSensorValue() { return (int) lux; }
-    public int getSetBrightness() { return tempBrightness; }
-
-    private static class SensorReading {
-        long time;
-        float value;
-        SensorReading(long time, float value) { this.time = time; this.value = value; }
+    public int getLastSensorValue() {
+        return (int) lux;
     }
-}
+
+    public int getSetBrightness() {
+        return tempBrightness;
+    }

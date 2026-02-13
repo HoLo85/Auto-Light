@@ -22,21 +22,20 @@ public class LightControl implements SensorEventListener {
 
     // Used only to schedule stopListening after "pause" in non-always modes
     private final Handler delayer = new Handler(Looper.getMainLooper());
-    private final long pause = 2500;
+    private static final long PAUSE = 2500;
 
     private boolean onListen = false;
     private boolean landscape = false;
     private boolean needsImmediateUpdate = false;
 
     private float lux = 0;
-    private int tempBrightness = 0;
 
     // Window smoothing settings
     private final ArrayDeque<SensorReading> buffer = new ArrayDeque<>();
-    private final long WINDOW_MS = 3000;
+    private static final long WINDOW_MS = 3000;
 
     // Hysteresis
-    private final float HYSTERESIS_THRESHOLD = 0.15f;
+    private static final float HYSTERESIS_THRESHOLD = 0.15f;
 
     private float lastAppliedLux = -1f;
     private float rollingSum = 0f;
@@ -123,7 +122,7 @@ public class LightControl implements SensorEventListener {
         if (sett.mode == Constants.WORK_MODE_LANDSCAPE && landscape) return;
 
         delayer.removeCallbacksAndMessages(null);
-        delayer.postDelayed(this::stopListening, pause);
+        delayer.postDelayed(this::stopListening, PAUSE);
     }
 
     public void startListening() {
@@ -188,10 +187,8 @@ public class LightControl implements SensorEventListener {
             brightness = (int) Math.round(y1 + (y2 - y1) * t);
         }
 
-        tempBrightness = brightness;
-
         try {
-            Settings.System.putInt(cResolver, Settings.System.SCREEN_BRIGHTNESS, brightness);
+            Settings.System.putInt(cResolver, Settings.System.SCREEN_BRIGHTNESS, convertToPWM(brightness));
         } catch (Exception ignored) { }
     }
 
@@ -220,15 +217,54 @@ public class LightControl implements SensorEventListener {
 
     public int getLastSensorValue() { return (int) lux; }
 
-    public int getSetBrightness() { return tempBrightness; }
+    /**
+     * Read current display brightnes set in system.
+     * Can return wrong values if auto brightness is active!
+     * @return current display brightness in percent
+     */
+    public int getDisplayBrightness() {
+        int displayBrightness = Settings.System.getInt(cResolver, Settings.System.SCREEN_BRIGHTNESS, -1);
+        return convertFromPWM(displayBrightness);
+    }
 
-    private static class SensorReading {
-        final long time;
-        final float value;
+    private record SensorReading(long time, float value) {
+    }
 
-        SensorReading(long time, float value) {
-            this.time = time;
-            this.value = value;
+    /**
+     * Convert brightness from percent to pwm values
+     * @param userSetBrightness display brightness 0-100
+     * @return brightness converted to pwm values
+     */
+    private int convertToPWM(int userSetBrightness) {
+        if (userSetBrightness < 1) {
+            userSetBrightness = 1;
         }
+        if (userSetBrightness > 100) {
+            userSetBrightness = 100;
+        }
+        return Math.round((float)255/100*userSetBrightness);
+    }
+
+    /**
+     * Convert display pwm values for brightness to percent
+     * @param displayBrightness pwm value 0-255
+     * @return brightness in percent
+     */
+    private int convertFromPWM(int displayBrightness) {
+        if (displayBrightness < 1) {
+            displayBrightness = 1;
+        }
+        if (displayBrightness > 255) {
+            displayBrightness = 255;
+        }
+        return Math.round((float)100/255*displayBrightness);
+    }
+
+    //Post token to observers
+    public String[] getLiveBrightnessData() {
+        return new String[]{
+                String.valueOf(getLastSensorValue()),
+                String.valueOf(getDisplayBrightness())
+        };
     }
 }

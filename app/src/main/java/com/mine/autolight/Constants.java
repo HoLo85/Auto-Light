@@ -4,16 +4,15 @@ public final class Constants {
 
     private Constants() {}
 
-    public static final int WORK_MODE_ALWAYS = 1;
-    public static final int WORK_MODE_PORTRAIT = 2;
-    public static final int WORK_MODE_UNLOCK = 3;
-    public static final int WORK_MODE_LANDSCAPE = 4;
+    public static final int WORK_MODE_ALWAYS = 0;
+    public static final int WORK_MODE_PORTRAIT = 1;
+    public static final int WORK_MODE_UNLOCK = 2;
+    public static final int WORK_MODE_LANDSCAPE = 3;
 
     // Best practice: fully-qualified action & extra names (avoid collisions)
     public static final String SERVICE_INTENT_ACTION = "com.mine.autolight.ACTION_LIGHT_COMMAND";
     public static final String SERVICE_INTENT_EXTRA = "com.mine.autolight.EXTRA_COMMAND";
 
-    public static final int SERVICE_INTENT_PAYLOAD_PING = 0;
     public static final int SERVICE_INTENT_PAYLOAD_SET  = 1;
 
     // Keep the user-enabled preference centralized

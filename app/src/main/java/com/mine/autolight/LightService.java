@@ -10,9 +10,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
 import android.content.res.Configuration;
-import android.os.Build;
 import android.os.IBinder;
-import android.widget.Toast;
 
 public class LightService extends Service {
 
@@ -22,7 +20,7 @@ public class LightService extends Service {
     private static final String CHANNEL_ID = "AutoLightServiceChannel";
 
     private MySettings settings;
-    private LightControl lightControl;
+    public static LightControl lightControl;
 
     // Receives system broadcasts only
     private final BroadcastReceiver systemReceiver = new BroadcastReceiver() {
@@ -35,19 +33,15 @@ public class LightService extends Service {
                     getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
             lightControl.setLandscape(isLandscape);
 
-            if (Intent.ACTION_SCREEN_OFF.equals(action)) {
-                lightControl.prepareForScreenOn();
-            } else if (Intent.ACTION_USER_PRESENT.equals(action) || Intent.ACTION_SCREEN_ON.equals(action)) {
-                if (settings.mode == Constants.WORK_MODE_UNLOCK) {
-                    lightControl.onScreenUnlock();
-                } else {
-                    lightControl.startListening();
-                }
-            } else if (Intent.ACTION_CONFIGURATION_CHANGED.equals(action)) {
-                if (settings.mode == Constants.WORK_MODE_UNLOCK) {
-                    lightControl.onScreenUnlock();
-                } else {
-                    lightControl.startListening();
+            switch (action) {
+                case Intent.ACTION_SCREEN_OFF -> lightControl.prepareForScreenOn();
+                case Intent.ACTION_USER_PRESENT, Intent.ACTION_SCREEN_ON,
+                     Intent.ACTION_CONFIGURATION_CHANGED -> {
+                    if (settings.mode == Constants.WORK_MODE_UNLOCK) {
+                        lightControl.onScreenUnlock();
+                    } else {
+                        lightControl.startListening();
+                    }
                 }
             }
         }
@@ -61,11 +55,7 @@ public class LightService extends Service {
 
             int payload = intent.getIntExtra(Constants.SERVICE_INTENT_EXTRA, -1);
 
-            if (payload == Constants.SERVICE_INTENT_PAYLOAD_PING) {
-                String status = "Lux: " + lightControl.getLastSensorValue()
-                        + "\nBrightness: " + lightControl.getSetBrightness();
-                Toast.makeText(context, status, Toast.LENGTH_SHORT).show();
-            } else if (payload == Constants.SERVICE_INTENT_PAYLOAD_SET) {
+            if (payload == Constants.SERVICE_INTENT_PAYLOAD_SET) {
                 lightControl.reconfigure();
             }
         }
@@ -88,13 +78,8 @@ public class LightService extends Service {
 
         IntentFilter cmd = new IntentFilter(Constants.SERVICE_INTENT_ACTION);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(systemReceiver, sys, Context.RECEIVER_EXPORTED);
-            registerReceiver(commandReceiver, cmd, Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            registerReceiver(systemReceiver, sys);
-            registerReceiver(commandReceiver, cmd);
-        }
+        registerReceiver(systemReceiver, sys, Context.RECEIVER_EXPORTED);
+        registerReceiver(commandReceiver, cmd, Context.RECEIVER_NOT_EXPORTED);
     }
 
     @Override
@@ -102,23 +87,17 @@ public class LightService extends Service {
         createNotificationChannel();
 
         Notification.Builder builder =
-                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                        ? new Notification.Builder(this, CHANNEL_ID)
-                        : new Notification.Builder(this);
+                new Notification.Builder(this, CHANNEL_ID);
 
         Notification notification = builder
-                .setContentTitle("Auto Light Active")
-                .setContentText("Monitoring brightness modes")
+                .setContentTitle(getString(R.string.service_state))
+                .setContentText(getString(R.string.service_message))
                 .setSmallIcon(android.R.drawable.ic_menu_compass)
                 .setOngoing(true)
                 .build();
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
-        } else {
-            startForeground(NOTIFICATION_ID, notification);
-        }
+        startForeground(NOTIFICATION_ID, notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
 
         boolean isLandscape =
                 getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
@@ -132,12 +111,10 @@ public class LightService extends Service {
     }
 
     private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "Light Service", NotificationManager.IMPORTANCE_LOW);
-            NotificationManager manager = getSystemService(NotificationManager.class);
-            if (manager != null) manager.createNotificationChannel(channel);
-        }
+        NotificationChannel channel = new NotificationChannel(
+                CHANNEL_ID, getString(R.string.service_name), NotificationManager.IMPORTANCE_LOW);
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        if (manager != null) manager.createNotificationChannel(channel);
     }
 
     @Override

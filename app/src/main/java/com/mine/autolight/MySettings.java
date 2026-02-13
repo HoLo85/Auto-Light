@@ -24,9 +24,9 @@ public class MySettings {
         l3 = sharedPref.getInt("l3", 1000);
         l4 = sharedPref.getInt("l4", 10000);
 
-        b1 = sharedPref.getInt("b1", 1);
-        b2 = sharedPref.getInt("b2", 10);
-        b3 = sharedPref.getInt("b3", 30);
+        b1 = sharedPref.getInt("b1", 15);
+        b2 = sharedPref.getInt("b2", 40);
+        b3 = sharedPref.getInt("b3", 65);
         b4 = sharedPref.getInt("b4", 90);
 
         mode = sharedPref.getInt("mode", Constants.WORK_MODE_UNLOCK);

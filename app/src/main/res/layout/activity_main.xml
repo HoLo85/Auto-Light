@@ -4,302 +4,428 @@
     android:id="@+id/ll_main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:gravity="center"
     android:orientation="vertical"
     tools:context="com.mine.autolight.MainActivity"
     tools:ignore="LabelFor">
 
-    <LinearLayout
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:paddingTop="8dp"
-        android:paddingLeft="12dp"
-        android:paddingRight="12dp"
-        android:orientation="horizontal">
-
-        <TextView
-            android:id="@+id/tv_service_state"
-            android:layout_width="fill_parent"
-            android:layout_height="match_parent"
-            android:layout_weight="0.3"
-            android:gravity="center_vertical"
-            android:text="@string/starting_service"
-            android:textSize="20sp" />
-
-        <Button
-            android:id="@+id/btn_start_stop"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="0.7"
-            android:text="@string/stop" />
-    </LinearLayout>
-
-    <View
-        android:layout_width="fill_parent"
-        android:layout_height="1dip"
-        android:layout_marginTop="10dp"
-        android:background="#808080" />
-
     <ScrollView
-        android:layout_width="fill_parent"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
         <LinearLayout
-            android:layout_width="fill_parent"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:orientation="vertical"
             android:paddingLeft="12dp"
-            android:paddingRight="12dp"
             android:paddingTop="5dp"
-            android:paddingBottom="12dp"
-            android:orientation="vertical">
+            android:paddingRight="12dp"
+            android:paddingBottom="12dp">
 
-            <Button
-                android:id="@+id/btn_get_state"
-                android:layout_width="fill_parent"
+            <TextView
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/get_data" />
+                android:layout_marginTop="15dp"
+                android:layout_marginBottom="14sp"
+                android:text="@string/light_settings_c"
+                android:textAlignment="center"
+                android:textSize="22sp" />
 
-            <Button
-                android:id="@+id/btn_expand"
-                android:layout_width="fill_parent"
-                android:layout_height="34sp"
-                android:layout_marginTop="5dp"
-                android:text="@string/show_config"
-                android:textSize="11sp" />
+            <TableLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal">
 
-            <LinearLayout
-                android:id="@+id/ll_hidden_settings"
-                android:layout_width="fill_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                <TableRow
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
 
                     <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="1 &gt;"
-                        tools:ignore="HardcodedText" />
+                        android:id="@+id/textView"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="@string/current"
+                        android:textAlignment="center"
+                        android:textSize="16sp" />
+
+                    <Space
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
 
                     <TextView
+                        android:id="@+id/txt_current_ambient"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="5"
+                        android:text="@string/current_ambience"
+                        android:textAlignment="center"
+                        android:textSize="16sp" />
+
+                    <Space
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
+
+                    <TextView
+                        android:id="@+id/txt_current_display"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="5"
+                        android:text="@string/current_display"
+                        android:textAlignment="center"
+                        android:textSize="16sp" />
+
+                </TableRow>
+
+                <TableRow
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
+                    <TextView
+                        android:id="@+id/l_sensor"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:text="@string/lux_level"
+                        android:textAlignment="center"
+                        android:textSize="16sp" />
+
+                    <Space
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
+
+                    <TextView
+                        android:id="@+id/l_level"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="12sp"
-                        android:text="@string/sensor_c" />
+                        android:layout_weight="5"
+                        android:text="@string/brightness_ambience"
+                        android:textAlignment="center"
+                        android:textSize="16sp" />
+
+                    <Space
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
+
+                    <TextView
+                        android:id="@+id/l_display"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="5"
+                        android:text="@string/brightness_display"
+                        android:textAlignment="center"
+                        android:textSize="16sp" />
+
+                </TableRow>
+
+                <TableRow
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/l_sensor_1"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="1"
+                        android:textAlignment="center"
+                        android:textSize="16sp" />
+
+                    <Space
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
 
                     <EditText
                         android:id="@+id/et_sensor_value_1"
-                        android:layout_width="75sp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_weight="5"
+                        android:gravity="center_vertical"
                         android:importantForAutofill="no"
                         android:inputType="number"
                         android:singleLine="true"
                         android:text="" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12sp"
-                        android:text="@string/brightness_c" />
+                    <Space
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
 
                     <EditText
                         android:id="@+id/et_brightness_value_1"
-                        android:layout_width="75sp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_weight="5"
+                        android:gravity="center_vertical"
                         android:importantForAutofill="no"
                         android:inputType="number"
                         android:singleLine="true"
                         android:text="" />
-                </LinearLayout>
 
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                </TableRow>
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="2 &gt;"
-                        tools:ignore="HardcodedText" />
+                <TableRow
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
 
                     <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12sp"
-                        android:text="@string/sensor_c" />
+                        android:id="@+id/l_sensor_2"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="2"
+                        android:textAlignment="center"
+                        android:textSize="16sp" />
+
+                    <Space
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
 
                     <EditText
                         android:id="@+id/et_sensor_value_2"
-                        android:layout_width="75sp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_weight="5"
+                        android:gravity="center_vertical"
                         android:importantForAutofill="no"
                         android:inputType="number"
                         android:singleLine="true"
                         android:text="" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12sp"
-                        android:text="@string/brightness_c" />
+                    <Space
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
 
                     <EditText
                         android:id="@+id/et_brightness_value_2"
-                        android:layout_width="75sp"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:layout_weight="5"
+                        android:gravity="center_vertical"
                         android:importantForAutofill="no"
                         android:inputType="number"
                         android:singleLine="true"
                         android:text="" />
-                </LinearLayout>
+                </TableRow>
 
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="3 &gt;"
-                        tools:ignore="HardcodedText" />
+                <TableRow
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
 
                     <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12sp"
-                        android:text="@string/sensor_c" />
+                        android:id="@+id/l_sensor_3"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="3"
+                        android:textAlignment="center"
+                        android:textSize="16sp" />
+
+                    <Space
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
 
                     <EditText
                         android:id="@+id/et_sensor_value_3"
-                        android:layout_width="75sp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_weight="5"
+                        android:gravity="center_vertical"
                         android:importantForAutofill="no"
                         android:inputType="number"
                         android:singleLine="true"
                         android:text="" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12sp"
-                        android:text="@string/brightness_c" />
+                    <Space
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
 
                     <EditText
                         android:id="@+id/et_brightness_value_3"
-                        android:layout_width="75sp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_weight="5"
+                        android:gravity="center_vertical"
                         android:importantForAutofill="no"
                         android:inputType="number"
                         android:singleLine="true"
                         android:text="" />
-                </LinearLayout>
+                </TableRow>
 
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="4 &gt;"
-                        tools:ignore="HardcodedText" />
+                <TableRow
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
 
                     <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12sp"
-                        android:text="@string/sensor_c" />
+                        android:id="@+id/l_sensor_4"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="4"
+                        android:textAlignment="center"
+                        android:textSize="16sp" />
+
+                    <Space
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
 
                     <EditText
                         android:id="@+id/et_sensor_value_4"
-                        android:layout_width="75sp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_weight="5"
+                        android:gravity="center_vertical"
                         android:importantForAutofill="no"
                         android:inputType="number"
                         android:singleLine="true"
                         android:text="" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12sp"
-                        android:text="@string/brightness_c" />
+                    <Space
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
 
                     <EditText
                         android:id="@+id/et_brightness_value_4"
-                        android:layout_width="75sp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_weight="5"
+                        android:gravity="center_vertical"
                         android:importantForAutofill="no"
                         android:inputType="number"
                         android:singleLine="true"
                         android:text="" />
-                </LinearLayout>
+                </TableRow>
+            </TableLayout>
 
-				<LinearLayout
-					android:layout_width="fill_parent" 
-					android:layout_height="wrap_content"
-					android:orientation="horizontal"
-					android:gravity="center_horizontal">
-					
-					<Button
-						android:id="@+id/btn_save_settings"
-						android:layout_width="wrap_content"
-						android:layout_height="wrap_content"
-						android:text="@string/save_settings" />
-				</LinearLayout>
-
-                <View
-                    android:layout_width="fill_parent"
-                    android:layout_height="1dip"
-                    android:layout_marginTop="10dp"
-                    android:background="#808080" />
-            </LinearLayout>
-
-            <TextView
-                android:layout_width="fill_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="15dp"
-                android:text="@string/work_mode_c"
-                android:textSize="18sp" />
-
-            <RadioGroup
-                android:id="@+id/rg_work_mode"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:gravity="center_horizontal"
+                android:orientation="horizontal">
 
-                <RadioButton
-                    android:id="@+id/rb_work_always"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/m_always" />
+                <Button
+                    android:id="@+id/btn_save_settings"
+                    android:layout_width="match_parent"
+                    android:layout_height="60sp"
+                    android:text="@string/save_settings"
+                    android:textSize="20sp" />
 
-                <RadioButton
-                    android:id="@+id/rb_work_portrait"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/m_portrait" />
+            </LinearLayout>
 
-                <RadioButton
-                    android:id="@+id/rb_work_landscape"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/m_landscape" />
-
-                <RadioButton
-                    android:id="@+id/rb_work_unlock"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/m_unlock" />
-            </RadioGroup>
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dip"
+                android:layout_marginTop="10dp"
+                android:background="#808080" />
 
         </LinearLayout>
 
     </ScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingLeft="12dp"
+        android:paddingTop="20dp"
+        android:paddingRight="12dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            android:text="@string/work_mode_c"
+            android:textAlignment="center"
+            android:textSize="22sp" />
+
+        <LinearLayout
+            android:id="@+id/sg_work_mode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <Switch
+                android:id="@+id/sw_work_0"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:height="50dp"
+                android:text="@string/m_always"
+                android:textSize="18sp" />
+
+            <Switch
+                android:id="@+id/sw_work_1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:height="50dp"
+                android:text="@string/m_portrait"
+                android:textSize="18sp" />
+
+            <Switch
+                android:id="@+id/sw_work_2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:height="50dp"
+                android:text="@string/m_landscape"
+                android:textSize="18sp" />
+
+            <Switch
+                android:id="@+id/sw_work_3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:height="50dp"
+                android:text="@string/m_unlock"
+                android:textSize="18sp" />
+
+            <View
+                android:id="@+id/view"
+                android:layout_width="match_parent"
+                android:layout_height="1dip"
+                android:layout_marginTop="10dp"
+                android:background="#808080" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingLeft="12dp"
+        android:paddingTop="20dp"
+        android:paddingRight="12dp">
+
+        <TextView
+            android:id="@+id/tv_service_state"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_weight="0.3"
+            android:gravity="center_horizontal"
+            android:text="@string/service_status"
+            android:textAlignment="center"
+            android:textSize="22sp" />
+
+        <Button
+            android:id="@+id/btn_start_stop"
+            android:layout_width="match_parent"
+            android:layout_height="60sp"
+            android:layout_weight="0.7"
+            android:text="@string/stopped"
+            android:textSize="20sp" />
+    </LinearLayout>
 
 </LinearLayout>

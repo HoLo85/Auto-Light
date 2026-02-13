@@ -1,32 +1,38 @@
 package com.mine.autolight;
 
-import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.InputFilter;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.*;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Switch;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MainActivity extends Activity {
 
     private Button btnStart;
-    private TextView tvState;
 
     private EditText etSensor1, etSensor2, etSensor3, etSensor4;
     private EditText etBrightness1, etBrightness2, etBrightness3, etBrightness4;
 
     private MySettings sett;
 
-    private boolean isExpanded = false;
     private boolean isDialogShown = false;
+
+    private Timer refreshTimer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,25 +41,6 @@ public class MainActivity extends Activity {
 
         sett = new MySettings(this);
 
-        Button btnExpand = findViewById(R.id.btn_expand);
-        LinearLayout llHidden = findViewById(R.id.ll_hidden_settings);
-        llHidden.setVisibility(View.GONE);
-
-        btnExpand.setOnClickListener(v -> {
-            if (isExpanded) {
-                llHidden.setVisibility(View.GONE);
-                btnExpand.setText(R.string.show_config);
-                isExpanded = false;
-            } else {
-                llHidden.setVisibility(View.VISIBLE);
-                btnExpand.setText(R.string.hide_config);
-                isExpanded = true;
-                refillCollapsibleSettings();
-                requestNotificationPermission();
-            }
-        });
-
-        tvState = findViewById(R.id.tv_service_state);
         btnStart = findViewById(R.id.btn_start_stop);
 
         btnStart.setOnClickListener(v -> {
@@ -68,23 +55,27 @@ public class MainActivity extends Activity {
             }
         });
 
-        Button btnState = findViewById(R.id.btn_get_state);
-        btnState.setOnClickListener(v -> {
-            displayServiceStatus(isServiceRunning() ? 1 : 0);
-            sendBroadcastToService(Constants.SERVICE_INTENT_PAYLOAD_PING);
-        });
-
+        // init input fields for ambient light values, limit allowed input to 1-25000
         etSensor1 = findViewById(R.id.et_sensor_value_1);
+        etSensor1.setFilters(new InputFilter[]{new InputFilterMinMax(1, 25000)});
         etSensor2 = findViewById(R.id.et_sensor_value_2);
+        etSensor2.setFilters(new InputFilter[]{new InputFilterMinMax(1, 25000)});
         etSensor3 = findViewById(R.id.et_sensor_value_3);
+        etSensor3.setFilters(new InputFilter[]{new InputFilterMinMax(1, 25000)});
         etSensor4 = findViewById(R.id.et_sensor_value_4);
+        etSensor4.setFilters(new InputFilter[]{new InputFilterMinMax(1, 25000)});
 
+        // init input fields for display brightness, limit allowed input values to 0-100%
         etBrightness1 = findViewById(R.id.et_brightness_value_1);
+        etBrightness1.setFilters(new InputFilter[]{new InputFilterMinMax(1, 100)});
         etBrightness2 = findViewById(R.id.et_brightness_value_2);
+        etBrightness2.setFilters(new InputFilter[]{new InputFilterMinMax(1, 100)});
         etBrightness3 = findViewById(R.id.et_brightness_value_3);
+        etBrightness3.setFilters(new InputFilter[]{new InputFilterMinMax(1, 100)});
         etBrightness4 = findViewById(R.id.et_brightness_value_4);
+        etBrightness4.setFilters(new InputFilter[]{new InputFilterMinMax(1, 100)});
 
-        refillCollapsibleSettings();
+        refillUserSettings();
 
         Button btnSave = findViewById(R.id.btn_save_settings);
         btnSave.setOnClickListener(v -> {
@@ -102,31 +93,112 @@ public class MainActivity extends Activity {
                 sett.save();
                 sendBroadcastToService(Constants.SERVICE_INTENT_PAYLOAD_SET);
 
+                // hide keyboard on save
+                if (this.getCurrentFocus() != null) {
+                    InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+                    imm.hideSoftInputFromWindow(this.getCurrentFocus().getWindowToken(), 0);
+                }
+
                 Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show();
             } catch (NumberFormatException e) {
                 Toast.makeText(this, "Invalid input", Toast.LENGTH_SHORT).show();
             }
         });
 
-        RadioButton rbWAlways = findViewById(R.id.rb_work_always);
-        RadioButton rbWPortrait = findViewById(R.id.rb_work_portrait);
-        RadioButton rbWLandscape = findViewById(R.id.rb_work_landscape);
-        RadioButton rbWUnlock = findViewById(R.id.rb_work_unlock);
+        Switch swWAlways = findViewById(R.id.sw_work_0);
+        Switch swWPortrait = findViewById(R.id.sw_work_1);
+        Switch swWLandscape = findViewById(R.id.sw_work_2);
+        Switch swWUnlock = findViewById(R.id.sw_work_3);
 
-        if (sett.mode == Constants.WORK_MODE_ALWAYS) rbWAlways.setChecked(true);
-        if (sett.mode == Constants.WORK_MODE_PORTRAIT) rbWPortrait.setChecked(true);
-        if (sett.mode == Constants.WORK_MODE_LANDSCAPE) rbWLandscape.setChecked(true);
-        if (sett.mode == Constants.WORK_MODE_UNLOCK) rbWUnlock.setChecked(true);
+        switch (sett.mode) {
+            case Constants.WORK_MODE_ALWAYS -> {
+                swWAlways.setActivated(true);
+                swWAlways.setChecked(true);
+            }
+            case Constants.WORK_MODE_PORTRAIT -> {
+                swWAlways.setActivated(true);
+                swWPortrait.setChecked(true);
+            }
+            case Constants.WORK_MODE_LANDSCAPE -> {
+                swWAlways.setActivated(true);
+                swWLandscape.setChecked(true);
+            }
+            default -> {
+                swWAlways.setActivated(true);
+                swWUnlock.setChecked(true);
+            }
+        }
 
-        RadioGroup rgWorkMode = findViewById(R.id.rg_work_mode);
-        rgWorkMode.setOnCheckedChangeListener((radioGroup, checkedId) -> {
-            if (checkedId == R.id.rb_work_always) sett.mode = Constants.WORK_MODE_ALWAYS;
-            if (checkedId == R.id.rb_work_portrait) sett.mode = Constants.WORK_MODE_PORTRAIT;
-            if (checkedId == R.id.rb_work_landscape) sett.mode = Constants.WORK_MODE_LANDSCAPE;
-            if (checkedId == R.id.rb_work_unlock) sett.mode = Constants.WORK_MODE_UNLOCK;
+        swWAlways.setOnCheckedChangeListener((compoundButton, b) -> {
+            if (!b && swWAlways.isActivated()) {
+                swWAlways.setChecked(true);
+            }
 
-            sett.save();
-            sendBroadcastToService(Constants.SERVICE_INTENT_PAYLOAD_SET);
+            if (b && !swWAlways.isActivated()) {
+                sett.mode = Constants.WORK_MODE_ALWAYS;
+
+                swWAlways.setActivated(true);
+                swWPortrait.setActivated(false); swWPortrait.setChecked(false);
+                swWLandscape.setActivated(false); swWLandscape.setChecked(false);
+                swWUnlock.setActivated(false); swWUnlock.setChecked(false);
+
+                sett.save();
+                sendBroadcastToService(Constants.SERVICE_INTENT_PAYLOAD_SET);
+            }
+        });
+
+        swWPortrait.setOnCheckedChangeListener((compoundButton, b) -> {
+            if (!b && swWPortrait.isActivated()) {
+                swWPortrait.setChecked(true);
+            }
+
+            if (b && !swWPortrait.isActivated()) {
+                sett.mode = Constants.WORK_MODE_PORTRAIT;
+
+                swWPortrait.setActivated(true);
+                swWAlways.setActivated(false); swWAlways.setChecked(false);
+                swWLandscape.setActivated(false); swWLandscape.setChecked(false);
+                swWUnlock.setActivated(false); swWUnlock.setChecked(false);
+
+                sett.save();
+                sendBroadcastToService(Constants.SERVICE_INTENT_PAYLOAD_SET);
+            }
+        });
+
+        swWLandscape.setOnCheckedChangeListener((compoundButton, b) -> {
+            if (!b && swWLandscape.isActivated()) {
+                swWLandscape.setChecked(true);
+            }
+
+            if (b) {
+                sett.mode = Constants.WORK_MODE_LANDSCAPE;
+
+                swWLandscape.setActivated(true);
+                swWPortrait.setActivated(false); swWPortrait.setChecked(false);
+                swWAlways.setActivated(false); swWAlways.setChecked(false);
+                swWUnlock.setActivated(false); swWUnlock.setChecked(false);
+
+                sett.save();
+                sendBroadcastToService(Constants.SERVICE_INTENT_PAYLOAD_SET);
+            }
+        });
+
+        swWUnlock.setOnCheckedChangeListener((compoundButton, b) -> {
+            if (!b && swWUnlock.isActivated()) {
+                swWUnlock.setChecked(true);
+            }
+
+            if (b) {
+                sett.mode = Constants.WORK_MODE_UNLOCK;
+
+                swWUnlock.setActivated(true);
+                swWPortrait.setActivated(false); swWPortrait.setChecked(false);
+                swWLandscape.setActivated(false); swWLandscape.setChecked(false);
+                swWAlways.setActivated(false); swWAlways.setChecked(false);
+
+                sett.save();
+                sendBroadcastToService(Constants.SERVICE_INTENT_PAYLOAD_SET);
+            }
         });
     }
 
@@ -155,6 +227,21 @@ public class MainActivity extends Activity {
             }
             displayServiceStatus(isServiceRunning() ? 1 : 0);
         }
+
+        refreshTimer = new Timer();
+        refreshBrightnessStatus();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        refreshTimer.cancel();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        refreshTimer.purge();
     }
 
     private void setServiceEnabledPref(boolean enabled) {
@@ -169,8 +256,7 @@ public class MainActivity extends Activity {
 
     private void runService() {
         Intent serviceIntent = new Intent(this, LightService.class);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(serviceIntent);
-        else startService(serviceIntent);
+        startForegroundService(serviceIntent);
     }
 
     private void killService() {
@@ -186,14 +272,6 @@ public class MainActivity extends Activity {
         i.setPackage(getPackageName());
         i.putExtra(Constants.SERVICE_INTENT_EXTRA, payload);
         sendBroadcast(i);
-    }
-
-    private void requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 123);
-            }
-        }
     }
 
     private boolean checkAndRequestPermissions() {
@@ -225,23 +303,19 @@ public class MainActivity extends Activity {
 
     private void displayServiceStatus(int status) {
         switch (status) {
-            case 0:
-                btnStart.setText(R.string.start);
-                tvState.setTextColor(getResources().getColor(android.R.color.holo_red_dark, null));
-                tvState.setText(R.string.service_stopped);
-                break;
-            case 1:
-                btnStart.setText(R.string.stop);
-                tvState.setTextColor(getResources().getColor(android.R.color.holo_green_dark, null));
-                tvState.setText(R.string.service_running);
-                break;
-            case -1:
-                tvState.setText(R.string.starting_service);
-                               break;
+            case 0 -> {
+                btnStart.setText(R.string.service_stopped);
+                btnStart.setTextColor(getResources().getColor(android.R.color.holo_red_dark, null));
+            }
+            case 1 -> {
+                btnStart.setText(R.string.service_started);
+                btnStart.setTextColor(getResources().getColor(android.R.color.holo_green_dark, null));
+            }
+            default -> btnStart.setText(R.string.starting_service);
         }
     }
 
-    private void refillCollapsibleSettings() {
+    private void refillUserSettings() {
         etSensor1.setText(String.valueOf(sett.l1));
         etSensor2.setText(String.valueOf(sett.l2));
         etSensor3.setText(String.valueOf(sett.l3));
@@ -251,5 +325,28 @@ public class MainActivity extends Activity {
         etBrightness2.setText(String.valueOf(sett.b2));
         etBrightness3.setText(String.valueOf(sett.b3));
         etBrightness4.setText(String.valueOf(sett.b4));
+    }
+
+    /**
+     * Refresh view for current ambient light sensor and current display brightness setting.
+     * The brightness is read directly from the system.
+     * If auto brightness is active this setting may be incorrect!
+     */
+    private void refreshBrightnessStatus() {
+        refreshTimer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    if (LightService.isRunning && LightService.lightControl != null) {
+                        final String[] brightnessData = LightService.lightControl.getLiveBrightnessData();
+
+                        TextView txtCurAmbience = findViewById(R.id.txt_current_ambient);
+                        TextView txtCurDisplay = findViewById(R.id.txt_current_display);
+
+                        txtCurAmbience.setText(brightnessData[0]);
+                        txtCurDisplay.setText(brightnessData[1]);
+                        displayServiceStatus(1);
+                    }
+                }
+            }, 0, 500);
     }
 }

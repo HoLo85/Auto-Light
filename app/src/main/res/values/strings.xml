@@ -22,7 +22,7 @@
     <string name="starting_service">Starting service</string>
     <string name="m_landscape">Landscape only</string>
     <string name="lux_level">Sensor</string>
-    <string name="brightness_ambience">Ambience</string>
+    <string name="brightness_ambience">Ambience (Lux)</string>
     <string name="brightness_display">Display (0–100%)</string>
     <string name="current">Current</string>
     <string name="current_ambience">0</string>

@@ -3,6 +3,7 @@
     <style name="Base.Theme.AutoLight" parent="android:Theme.Material">
         <!-- Customize your light theme here. -->
         <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
     </style>
 
     <style name="Theme.AutoLight" parent="Base.Theme.AutoLight" />

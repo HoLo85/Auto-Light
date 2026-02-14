@@ -116,15 +116,15 @@ public class MainActivity extends Activity {
                 swWAlways.setChecked(true);
             }
             case Constants.WORK_MODE_PORTRAIT -> {
-                swWAlways.setActivated(true);
+                swWPortrait.setActivated(true);
                 swWPortrait.setChecked(true);
             }
             case Constants.WORK_MODE_LANDSCAPE -> {
-                swWAlways.setActivated(true);
+                swWLandscape.setActivated(true);
                 swWLandscape.setChecked(true);
             }
             default -> {
-                swWAlways.setActivated(true);
+                swWUnlock.setActivated(true);
                 swWUnlock.setChecked(true);
             }
         }

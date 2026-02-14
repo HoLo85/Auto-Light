@@ -32,7 +32,7 @@ public class LightControl implements SensorEventListener {
 
     // Window smoothing settings
     private final ArrayDeque<SensorReading> buffer = new ArrayDeque<>();
-    private static final long WINDOW_MS = 3000;
+    private static final long WINDOW_MS = 2500;
 
     // Hysteresis
     private static final float HYSTERESIS_THRESHOLD = 0.15f;

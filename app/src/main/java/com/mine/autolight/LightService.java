@@ -15,51 +15,16 @@ import android.os.IBinder;
 public class LightService extends Service {
 
     public static boolean isRunning = false;
-
     private static final int NOTIFICATION_ID = 1;
     private static final String CHANNEL_ID = "AutoLightServiceChannel";
 
     private MySettings settings;
     public static LightControl lightControl;
 
-    // Receives system broadcasts only
-    private final BroadcastReceiver systemReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            if (action == null) return;
-
-            boolean isLandscape =
-                    getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
-            lightControl.setLandscape(isLandscape);
-
-            switch (action) {
-                case Intent.ACTION_SCREEN_OFF -> lightControl.prepareForScreenOn();
-                case Intent.ACTION_USER_PRESENT, Intent.ACTION_SCREEN_ON,
-                     Intent.ACTION_CONFIGURATION_CHANGED -> {
-                    if (settings.mode == Constants.WORK_MODE_UNLOCK) {
-                        lightControl.onScreenUnlock();
-                    } else {
-                        lightControl.startListening();
-                    }
-                }
-            }
-        }
-    };
-
-    // Receives app-internal commands only
-    private final BroadcastReceiver commandReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (!Constants.SERVICE_INTENT_ACTION.equals(intent.getAction())) return;
-
-            int payload = intent.getIntExtra(Constants.SERVICE_INTENT_EXTRA, -1);
-
-            if (payload == Constants.SERVICE_INTENT_PAYLOAD_SET) {
-                lightControl.reconfigure();
-            }
-        }
-    };
+    @Override
+    public void sendBroadcast(Intent intent) {
+        super.sendBroadcast(intent);
+    }
 
     @Override
     public void onCreate() {
@@ -77,9 +42,10 @@ public class LightService extends Service {
         sys.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);
 
         IntentFilter cmd = new IntentFilter(Constants.SERVICE_INTENT_ACTION);
-
         registerReceiver(systemReceiver, sys, Context.RECEIVER_EXPORTED);
         registerReceiver(commandReceiver, cmd, Context.RECEIVER_NOT_EXPORTED);
+
+        sendServiceStatus(Constants.SERVICE_STATUS_RUNNING);
     }
 
     @Override
@@ -103,18 +69,11 @@ public class LightService extends Service {
                 getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
         lightControl.setLandscape(isLandscape);
 
-        if (settings.mode == Constants.WORK_MODE_ALWAYS) {
+        if (settings.mode == Constants.WORK_MODE.ALWAYS) {
             lightControl.startListening();
         }
 
         return START_STICKY;
-    }
-
-    private void createNotificationChannel() {
-        NotificationChannel channel = new NotificationChannel(
-                CHANNEL_ID, getString(R.string.service_name), NotificationManager.IMPORTANCE_LOW);
-        NotificationManager manager = getSystemService(NotificationManager.class);
-        if (manager != null) manager.createNotificationChannel(channel);
     }
 
     @Override
@@ -128,12 +87,65 @@ public class LightService extends Service {
         try { unregisterReceiver(systemReceiver); } catch (Exception ignored) { }
         try { unregisterReceiver(commandReceiver); } catch (Exception ignored) { }
 
+        sendServiceStatus(Constants.SERVICE_STATUS_STOPPED);
         super.onDestroy();
     }
 
-    
-	@Override
-	public IBinder onBind(Intent intent) {
-		return null;
-	}
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+    // Receives system broadcasts only
+    private final BroadcastReceiver systemReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (action == null) return;
+
+            boolean isLandscape =
+                    getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+            lightControl.setLandscape(isLandscape);
+
+            switch (action) {
+                case Intent.ACTION_SCREEN_OFF -> lightControl.prepareForScreenOn();
+                case Intent.ACTION_USER_PRESENT, Intent.ACTION_SCREEN_ON,
+                     Intent.ACTION_CONFIGURATION_CHANGED -> {
+                    if (settings.mode == Constants.WORK_MODE.UNLOCK) {
+                        lightControl.onScreenUnlock();
+                    } else {
+                        lightControl.startListening();
+                    }
+                }
+            }
+        }
+    };
+
+    // Receives app-internal commands only
+    private final BroadcastReceiver commandReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (!Constants.SERVICE_INTENT_ACTION.equals(intent.getAction())) return;
+
+            int payload = intent.getIntExtra(Constants.SERVICE_INTENT_EXTRA, -1);
+
+            if (payload == Constants.SERVICE_INTENT_PAYLOAD_SET) {
+                lightControl.reconfigure();
+            }
+        }
+    };
+
+    private void createNotificationChannel() {
+        NotificationChannel channel = new NotificationChannel(
+                CHANNEL_ID, getString(R.string.service_name), NotificationManager.IMPORTANCE_LOW);
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        if (manager != null) manager.createNotificationChannel(channel);
+    }
+
+    private void sendServiceStatus(final int status) {
+        Intent i = new Intent(Constants.SERVICE_INTENT_STATUS);
+        i.setPackage(getPackageName());
+        i.putExtra(Constants.SERVICE_INTENT_STATUS, status);
+        sendBroadcast(i);
+    }
 }

@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.Build;
 import android.util.Log;
 
 public class AutoStart extends BroadcastReceiver {
@@ -33,13 +32,9 @@ public class AutoStart extends BroadcastReceiver {
         Intent serviceIntent = new Intent(context, LightService.class);
 
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(serviceIntent);
-            } else {
-                context.startService(serviceIntent);
-            }
+            context.startForegroundService(serviceIntent);
         } catch (Exception e) {
-                       Log.e(TAG, "Failed to start service on boot: " + e.getMessage());
+            Log.e(TAG, "Failed to start service on boot: " + e.getMessage());
         }
     }
 }

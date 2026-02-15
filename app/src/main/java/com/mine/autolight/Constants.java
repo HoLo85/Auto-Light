@@ -4,14 +4,22 @@ public final class Constants {
 
     private Constants() {}
 
-    public static final int WORK_MODE_ALWAYS = 0;
-    public static final int WORK_MODE_PORTRAIT = 1;
-    public static final int WORK_MODE_UNLOCK = 2;
-    public static final int WORK_MODE_LANDSCAPE = 3;
+    public final static int SERVICE_STATUS_UNKNOWN = -1;
+    public final static int SERVICE_STATUS_STOPPED = 0;
+    public final static int SERVICE_STATUS_RUNNING = 1;
+
+    public enum WORK_MODE {
+        ALWAYS,
+        PORTRAIT,
+        UNLOCK,
+        LANDSCAPE
+    }
 
     // Best practice: fully-qualified action & extra names (avoid collisions)
     public static final String SERVICE_INTENT_ACTION = "com.mine.autolight.ACTION_LIGHT_COMMAND";
     public static final String SERVICE_INTENT_EXTRA = "com.mine.autolight.EXTRA_COMMAND";
+    public static final String SERVICE_INTENT_SENSOR = "com.mine.autolight.SENSOR_COMMAND";
+    public static final String SERVICE_INTENT_STATUS = "com.mine.autolight.SERVICE_STATUS";
 
     public static final int SERVICE_INTENT_PAYLOAD_SET  = 1;
 

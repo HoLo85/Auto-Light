@@ -1,14 +1,19 @@
 package com.mine.autolight;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.InputFilter;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.inputmethod.InputMethodManager;
@@ -18,12 +23,12 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.util.Timer;
-import java.util.TimerTask;
-
 public class MainActivity extends Activity {
 
+    private static final String TAG = "MainActivity";
+
     private Button btnStart;
+    private TextView txtCurAmbience, txtCurDisplay;
 
     private EditText etSensor1, etSensor2, etSensor3, etSensor4;
     private EditText etBrightness1, etBrightness2, etBrightness3, etBrightness4;
@@ -31,8 +36,6 @@ public class MainActivity extends Activity {
     private MySettings sett;
 
     private boolean isDialogShown = false;
-
-    private Timer refreshTimer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,16 +45,18 @@ public class MainActivity extends Activity {
         sett = new MySettings(this);
 
         btnStart = findViewById(R.id.btn_start_stop);
+        txtCurAmbience = findViewById(R.id.txt_current_ambient);
+        txtCurDisplay = findViewById(R.id.txt_current_display);
 
         btnStart.setOnClickListener(v -> {
             if (isServiceRunning()) {
                 setServiceEnabledPref(false);
                 killService();
-                displayServiceStatus(0);
+                displayServiceStatus(Constants.SERVICE_STATUS_STOPPED);
             } else {
                 setServiceEnabledPref(true);
                 runService();
-                displayServiceStatus(-1);
+                displayServiceStatus(Constants.SERVICE_STATUS_RUNNING);
             }
         });
 
@@ -105,101 +110,34 @@ public class MainActivity extends Activity {
             }
         });
 
-        Switch swWAlways = findViewById(R.id.sw_work_0);
-        Switch swWPortrait = findViewById(R.id.sw_work_1);
-        Switch swWLandscape = findViewById(R.id.sw_work_2);
-        Switch swWUnlock = findViewById(R.id.sw_work_3);
+        final Switch swWAlways = findViewById(R.id.sw_work_0);
+        final Switch swWPortrait = findViewById(R.id.sw_work_1);
+        final Switch swWLandscape = findViewById(R.id.sw_work_2);
+        final Switch swWUnlock = findViewById(R.id.sw_work_3);
 
         switch (sett.mode) {
-            case Constants.WORK_MODE_ALWAYS -> {
+            case ALWAYS -> {
                 swWAlways.setActivated(true);
                 swWAlways.setChecked(true);
             }
-            case Constants.WORK_MODE_PORTRAIT -> {
+            case PORTRAIT -> {
                 swWPortrait.setActivated(true);
                 swWPortrait.setChecked(true);
             }
-            case Constants.WORK_MODE_LANDSCAPE -> {
+            case LANDSCAPE -> {
                 swWLandscape.setActivated(true);
                 swWLandscape.setChecked(true);
             }
-            default -> {
+            case UNLOCK -> {
                 swWUnlock.setActivated(true);
                 swWUnlock.setChecked(true);
+            }
+            default -> {
+                // no default for now
             }
         }
 
-        swWAlways.setOnCheckedChangeListener((compoundButton, b) -> {
-            if (!b && swWAlways.isActivated()) {
-                swWAlways.setChecked(true);
-            }
-
-            if (b && !swWAlways.isActivated()) {
-                sett.mode = Constants.WORK_MODE_ALWAYS;
-
-                swWAlways.setActivated(true);
-                swWPortrait.setActivated(false); swWPortrait.setChecked(false);
-                swWLandscape.setActivated(false); swWLandscape.setChecked(false);
-                swWUnlock.setActivated(false); swWUnlock.setChecked(false);
-
-                sett.save();
-                sendBroadcastToService(Constants.SERVICE_INTENT_PAYLOAD_SET);
-            }
-        });
-
-        swWPortrait.setOnCheckedChangeListener((compoundButton, b) -> {
-            if (!b && swWPortrait.isActivated()) {
-                swWPortrait.setChecked(true);
-            }
-
-            if (b && !swWPortrait.isActivated()) {
-                sett.mode = Constants.WORK_MODE_PORTRAIT;
-
-                swWPortrait.setActivated(true);
-                swWAlways.setActivated(false); swWAlways.setChecked(false);
-                swWLandscape.setActivated(false); swWLandscape.setChecked(false);
-                swWUnlock.setActivated(false); swWUnlock.setChecked(false);
-
-                sett.save();
-                sendBroadcastToService(Constants.SERVICE_INTENT_PAYLOAD_SET);
-            }
-        });
-
-        swWLandscape.setOnCheckedChangeListener((compoundButton, b) -> {
-            if (!b && swWLandscape.isActivated()) {
-                swWLandscape.setChecked(true);
-            }
-
-            if (b) {
-                sett.mode = Constants.WORK_MODE_LANDSCAPE;
-
-                swWLandscape.setActivated(true);
-                swWPortrait.setActivated(false); swWPortrait.setChecked(false);
-                swWAlways.setActivated(false); swWAlways.setChecked(false);
-                swWUnlock.setActivated(false); swWUnlock.setChecked(false);
-
-                sett.save();
-                sendBroadcastToService(Constants.SERVICE_INTENT_PAYLOAD_SET);
-            }
-        });
-
-        swWUnlock.setOnCheckedChangeListener((compoundButton, b) -> {
-            if (!b && swWUnlock.isActivated()) {
-                swWUnlock.setChecked(true);
-            }
-
-            if (b) {
-                sett.mode = Constants.WORK_MODE_UNLOCK;
-
-                swWUnlock.setActivated(true);
-                swWPortrait.setActivated(false); swWPortrait.setChecked(false);
-                swWLandscape.setActivated(false); swWLandscape.setChecked(false);
-                swWAlways.setActivated(false); swWAlways.setChecked(false);
-
-                sett.save();
-                sendBroadcastToService(Constants.SERVICE_INTENT_PAYLOAD_SET);
-            }
-        });
+        setupOnCheckChangeListener(new Switch[]{swWAlways, swWPortrait, swWLandscape, swWUnlock});
     }
 
     @Override
@@ -225,23 +163,60 @@ public class MainActivity extends Activity {
             if (!isServiceRunning() && getServiceEnabledPref()) {
                 runService();
             }
-            displayServiceStatus(isServiceRunning() ? 1 : 0);
+            displayServiceStatus(isServiceRunning() ? Constants.SERVICE_STATUS_RUNNING : Constants.SERVICE_STATUS_STOPPED);
         }
 
-        refreshTimer = new Timer();
-        refreshBrightnessStatus();
+        // register receiver for messages from lightService
+        registerReceiver(true);
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        refreshTimer.cancel();
+        registerReceiver(false);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        refreshTimer.purge();
+        registerReceiver(false);
+    }
+
+    // setup listeners and states for switches
+    // if activated, deactivate other switches
+    // if already enabled keep active state of current switch
+    private void setupOnCheckChangeListener(final Switch[] switches) {
+        for (int sw = 0; sw < switches.length; sw++) {
+            final int enabledSwitch = sw;
+            switches[enabledSwitch].setOnCheckedChangeListener((compoundButton, b) -> {
+                if (!b && switches[enabledSwitch].isActivated()) {
+                    switches[enabledSwitch].setChecked(true);
+                }
+
+                if (b) {
+                    sett.mode = Constants.WORK_MODE.values()[enabledSwitch];
+
+                    switches[enabledSwitch].setActivated(true);
+
+                    for (int disabledSwitch = 0; disabledSwitch < switches.length; disabledSwitch++) {
+                        if (disabledSwitch != enabledSwitch) {
+                            switches[disabledSwitch].setActivated(false);
+                            switches[disabledSwitch].setChecked(false);
+                        }
+                    }
+
+                    sett.save();
+                    sendBroadcastToService(Constants.SERVICE_INTENT_PAYLOAD_SET);
+                }
+            });
+        }
+    }
+
+    @SuppressWarnings("unused")
+    private void requestNotificationPermission() {
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 123);
+        }
     }
 
     private void setServiceEnabledPref(boolean enabled) {
@@ -267,12 +242,41 @@ public class MainActivity extends Activity {
         return LightService.isRunning;
     }
 
+    private void registerReceiver(boolean register) {
+        if (register) {
+            IntentFilter light = new IntentFilter();
+            light.addAction(Constants.SERVICE_INTENT_SENSOR);
+            light.addAction(Constants.SERVICE_INTENT_STATUS);
+            registerReceiver(sensorBroadcastReceiver, light, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            unregisterReceiver(sensorBroadcastReceiver);
+        }
+    }
+
     private void sendBroadcastToService(int payload) {
         Intent i = new Intent(Constants.SERVICE_INTENT_ACTION);
         i.setPackage(getPackageName());
         i.putExtra(Constants.SERVICE_INTENT_EXTRA, payload);
         sendBroadcast(i);
     }
+
+    // receive updates from light service
+    private final BroadcastReceiver sensorBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (Constants.SERVICE_INTENT_SENSOR.equals(intent.getAction())) {
+                final String[] payload = intent.getStringArrayExtra(Constants.SERVICE_INTENT_SENSOR);
+
+                if (payload != null && payload.length > 0) {
+                    refreshCurrentLevels(payload);
+                }
+            }
+            if (Constants.SERVICE_INTENT_STATUS.equals(intent.getAction())) {
+                final int payload = intent.getIntExtra(Constants.SERVICE_INTENT_STATUS, Constants.SERVICE_STATUS_UNKNOWN);
+                refreshServiceStatus(payload);
+            }
+        }
+    };
 
     private boolean checkAndRequestPermissions() {
         if (Settings.System.canWrite(this)) {
@@ -306,6 +310,8 @@ public class MainActivity extends Activity {
             case 0 -> {
                 btnStart.setText(R.string.service_stopped);
                 btnStart.setTextColor(getResources().getColor(android.R.color.holo_red_dark, null));
+                txtCurAmbience.setText("---");
+                txtCurDisplay.setText("---");
             }
             case 1 -> {
                 btnStart.setText(R.string.service_started);
@@ -332,21 +338,16 @@ public class MainActivity extends Activity {
      * The brightness is read directly from the system.
      * If auto brightness is active this setting may be incorrect!
      */
-    private void refreshBrightnessStatus() {
-        refreshTimer.schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    if (LightService.isRunning && LightService.lightControl != null) {
-                        final String[] brightnessData = LightService.lightControl.getLiveBrightnessData();
+    private void refreshCurrentLevels(final String[] brightnessData) {
+        if (LightService.isRunning && LightService.lightControl != null) {
+            txtCurAmbience.setText(brightnessData[0]);
+            txtCurDisplay.setText(brightnessData[1]);
+            Log.d(TAG, String.format( "Refresh: %s:%s", brightnessData[0], brightnessData[1]));
+        }
+    }
 
-                        TextView txtCurAmbience = findViewById(R.id.txt_current_ambient);
-                        TextView txtCurDisplay = findViewById(R.id.txt_current_display);
-
-                        txtCurAmbience.setText(brightnessData[0]);
-                        txtCurDisplay.setText(brightnessData[1]);
-                        displayServiceStatus(1);
-                    }
-                }
-            }, 0, 500);
+    private void refreshServiceStatus(final int status) {
+        displayServiceStatus(status);
+        Log.d(TAG, String.format( "Status: %s", status));
     }
 }

@@ -27,7 +27,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="15dp"
                 android:layout_marginBottom="14sp"
-                android:text="@string/light_settings_c"
+                android:text="@string/label_light_settings"
                 android:textAlignment="center"
                 android:textSize="22sp" />
 
@@ -38,14 +38,15 @@
 
                 <TableRow
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent">
+                    android:layout_height="match_parent"
+                    android:paddingBottom="10sp">
 
                     <TextView
                         android:id="@+id/textView"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
-                        android:text="@string/current"
+                        android:text="@string/current_values"
                         android:textAlignment="center"
                         android:textSize="16sp" />
 
@@ -61,7 +62,8 @@
                         android:layout_weight="5"
                         android:text="@string/current_ambience"
                         android:textAlignment="center"
-                        android:textSize="16sp" />
+                        android:textSize="16sp"
+                        android:textStyle="bold|italic" />
 
                     <Space
                         android:layout_width="match_parent"
@@ -75,7 +77,9 @@
                         android:layout_weight="5"
                         android:text="@string/current_display"
                         android:textAlignment="center"
-                        android:textSize="16sp" />
+                        android:textSize="16sp"
+                        android:textStyle="bold|italic" />
+
 
                 </TableRow>
 
@@ -135,7 +139,8 @@
                         android:gravity="center"
                         android:text="1"
                         android:textAlignment="center"
-                        android:textSize="16sp" />
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
 
                     <Space
                         android:layout_width="match_parent"
@@ -148,11 +153,11 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="5"
                         android:gravity="center_horizontal"
-                        android:textAlignment="center"
                         android:importantForAutofill="no"
                         android:inputType="number"
                         android:singleLine="true"
-                        android:text="" />
+                        android:text=""
+                        android:textAlignment="center" />
 
                     <Space
                         android:layout_width="match_parent"
@@ -165,11 +170,11 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="5"
                         android:gravity="center_horizontal"
-                        android:textAlignment="center"
                         android:importantForAutofill="no"
                         android:inputType="number"
                         android:singleLine="true"
-                        android:text="" />
+                        android:text=""
+                        android:textAlignment="center" />
 
                 </TableRow>
 
@@ -185,7 +190,8 @@
                         android:gravity="center"
                         android:text="2"
                         android:textAlignment="center"
-                        android:textSize="16sp" />
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
 
                     <Space
                         android:layout_width="match_parent"
@@ -198,11 +204,11 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="5"
                         android:gravity="center_horizontal"
-                        android:textAlignment="center"
                         android:importantForAutofill="no"
                         android:inputType="number"
                         android:singleLine="true"
-                        android:text="" />
+                        android:text=""
+                        android:textAlignment="center" />
 
                     <Space
                         android:layout_width="match_parent"
@@ -215,11 +221,11 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="5"
                         android:gravity="center_horizontal"
-                        android:textAlignment="center"
                         android:importantForAutofill="no"
                         android:inputType="number"
                         android:singleLine="true"
-                        android:text="" />
+                        android:text=""
+                        android:textAlignment="center" />
                 </TableRow>
 
                 <TableRow
@@ -234,7 +240,8 @@
                         android:gravity="center"
                         android:text="3"
                         android:textAlignment="center"
-                        android:textSize="16sp" />
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
 
                     <Space
                         android:layout_width="match_parent"
@@ -247,11 +254,11 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="5"
                         android:gravity="center_horizontal"
-                        android:textAlignment="center"
                         android:importantForAutofill="no"
                         android:inputType="number"
                         android:singleLine="true"
-                        android:text="" />
+                        android:text=""
+                        android:textAlignment="center" />
 
                     <Space
                         android:layout_width="match_parent"
@@ -264,11 +271,11 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="5"
                         android:gravity="center_horizontal"
-                        android:textAlignment="center"
                         android:importantForAutofill="no"
                         android:inputType="number"
                         android:singleLine="true"
-                        android:text="" />
+                        android:text=""
+                        android:textAlignment="center" />
                 </TableRow>
 
                 <TableRow
@@ -283,7 +290,8 @@
                         android:gravity="center"
                         android:text="4"
                         android:textAlignment="center"
-                        android:textSize="16sp" />
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
 
                     <Space
                         android:layout_width="match_parent"
@@ -296,11 +304,11 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="5"
                         android:gravity="center_horizontal"
-                        android:textAlignment="center"
                         android:importantForAutofill="no"
                         android:inputType="number"
                         android:singleLine="true"
-                        android:text="" />
+                        android:text=""
+                        android:textAlignment="center" />
 
                     <Space
                         android:layout_width="match_parent"
@@ -313,11 +321,11 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="5"
                         android:gravity="center_horizontal"
-                        android:textAlignment="center"
                         android:importantForAutofill="no"
                         android:inputType="number"
                         android:singleLine="true"
-                        android:text="" />
+                        android:text=""
+                        android:textAlignment="center" />
                 </TableRow>
             </TableLayout>
 
@@ -358,7 +366,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="15dp"
-            android:text="@string/work_mode_c"
+            android:text="@string/label_work_mode"
             android:textAlignment="center"
             android:textSize="22sp" />
 
@@ -373,7 +381,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:height="50dp"
-                android:text="@string/m_always"
+                android:text="@string/mode_always"
                 android:textSize="18sp" />
 
             <Switch
@@ -381,7 +389,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:height="50dp"
-                android:text="@string/m_portrait"
+                android:text="@string/mode_portrait"
                 android:textSize="18sp" />
 
             <Switch
@@ -389,7 +397,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:height="50dp"
-                android:text="@string/m_landscape"
+                android:text="@string/mode_landscape"
                 android:textSize="18sp" />
 
             <Switch
@@ -397,7 +405,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:height="50dp"
-                android:text="@string/m_unlock"
+                android:text="@string/mode_unlock"
                 android:textSize="18sp" />
 
             <View
@@ -432,7 +440,7 @@
             android:layout_width="match_parent"
             android:layout_height="60sp"
             android:layout_weight="0.7"
-            android:text="@string/stopped"
+            android:text="@string/service_stopped"
             android:textSize="20sp" />
     </LinearLayout>
 

@@ -2,14 +2,17 @@ package com.mine.autolight;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 
 public class MySettings {
+
+    private static final String TAG = "MySettings";
 
     private final Context context;
     private SharedPreferences sharedPref;
 
     public int l1, l2, l3, l4, b1, b2, b3, b4;
-    public int mode;
+    public Constants.WORK_MODE mode;
 
     MySettings(Context context) {
         this.context = context;
@@ -29,7 +32,12 @@ public class MySettings {
         b3 = sharedPref.getInt("b3", 65);
         b4 = sharedPref.getInt("b4", 90);
 
-        mode = sharedPref.getInt("mode", Constants.WORK_MODE_UNLOCK);
+        mode = Constants.WORK_MODE.values()[sharedPref.getInt("mode", Constants.WORK_MODE.UNLOCK.ordinal())];
+
+        Log.d(TAG, String.format("Reloaded settings:"));
+        Log.d(TAG, String.format("Mode: %s", mode));
+        Log.d(TAG, String.format("Lux: %s,%s,%s,%s", l1,l2,l3,l4));
+        Log.d(TAG, String.format("Display: %s,%s,%s,%s", b1,b2,b3,b4));
     }
 
     public void save() {
@@ -45,7 +53,7 @@ public class MySettings {
         editor.putInt("b3", b3);
         editor.putInt("b4", b4);
 
-        editor.putInt("mode", mode);
+        editor.putInt("mode", mode.ordinal());
 
         editor.apply();
     }

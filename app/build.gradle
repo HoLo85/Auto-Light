@@ -11,7 +11,7 @@ android {
         minSdk 33
         targetSdk 35
         versionCode 7
-        versionName "2.5"
+        versionName "2.6"
         base.archivesName = applicationId
     }
 

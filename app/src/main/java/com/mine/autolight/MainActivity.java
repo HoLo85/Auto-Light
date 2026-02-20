@@ -36,7 +36,7 @@ public class MainActivity extends Activity {
     private MySettings sett;
 
     private boolean isDialogShown;
-    private boolean debugEnabled;
+    public static boolean debugEnabled;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -117,7 +117,7 @@ public class MainActivity extends Activity {
         final Switch swWUnlock = findViewById(R.id.sw_work_3);
 
         switch (sett.mode) {
-            case ALWAYS -> {
+            case UNLOCK -> {
                 swWAlways.setActivated(true);
                 swWAlways.setChecked(true);
             }
@@ -129,7 +129,7 @@ public class MainActivity extends Activity {
                 swWLandscape.setActivated(true);
                 swWLandscape.setChecked(true);
             }
-            case UNLOCK -> {
+            case ALWAYS -> {
                 swWUnlock.setActivated(true);
                 swWUnlock.setChecked(true);
             }
@@ -154,7 +154,7 @@ public class MainActivity extends Activity {
             return true;
         }
         if (item.getItemId() == R.id.action_debug) {
-            debugEnabled = item.isChecked();
+            debugEnabled = !item.isChecked();
             item.setChecked(debugEnabled);
             sendBroadcastToService(Constants.SERVICE_INTENT_DEBUG_SET);
             return true;

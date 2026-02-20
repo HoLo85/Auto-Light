@@ -34,10 +34,12 @@ public class MySettings {
 
         mode = Constants.WORK_MODE.values()[sharedPref.getInt("mode", Constants.WORK_MODE.UNLOCK.ordinal())];
 
-        Log.d(TAG, String.format("Reloaded settings:"));
-        Log.d(TAG, String.format("Mode: %s", mode));
-        Log.d(TAG, String.format("Lux: %s,%s,%s,%s", l1,l2,l3,l4));
-        Log.d(TAG, String.format("Display: %s,%s,%s,%s", b1,b2,b3,b4));
+        if (MainActivity.debugEnabled) {
+            Log.d(TAG, "Reloaded settings:");
+            Log.d(TAG, String.format("Mode: %s", mode));
+            Log.d(TAG, String.format("Lux: %s,%s,%s,%s", l1, l2, l3, l4));
+            Log.d(TAG, String.format("Display: %s,%s,%s,%s", b1, b2, b3, b4));
+        }
     }
 
     public void save() {

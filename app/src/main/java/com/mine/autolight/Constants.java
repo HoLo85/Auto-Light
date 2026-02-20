@@ -9,10 +9,10 @@ public final class Constants {
     public final static int SERVICE_STATUS_RUNNING = 1;
 
     public enum WORK_MODE {
-        ALWAYS,
-        PORTRAIT,
         UNLOCK,
-        LANDSCAPE
+        PORTRAIT,
+        LANDSCAPE,
+        ALWAYS,
     }
 
     // Best practice: fully-qualified action & extra names (avoid collisions)

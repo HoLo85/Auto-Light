@@ -15,7 +15,6 @@ import android.os.IBinder;
 public class LightService extends Service {
 
     public static boolean isRunning;
-    private boolean debugEnabled;
     private static final int NOTIFICATION_ID = 1;
     private static final String CHANNEL_ID = "AutoLightServiceChannel";
 
@@ -97,10 +96,6 @@ public class LightService extends Service {
         return null;
     }
 
-    public boolean isDebugEnabled() {
-        return debugEnabled;
-    }
-
     // Receives system broadcasts only
     private final BroadcastReceiver systemReceiver = new BroadcastReceiver() {
         @Override
@@ -136,11 +131,6 @@ public class LightService extends Service {
 
             if (Constants.SERVICE_INTENT_PAYLOAD_SET.equals(payload)) {
                 lightControl.reconfigure();
-                return;
-            }
-
-            if (Constants.SERVICE_INTENT_DEBUG_SET.equals(payload)) {
-                debugEnabled = !debugEnabled;
                 return;
             }
         }

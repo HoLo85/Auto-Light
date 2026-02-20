@@ -245,7 +245,7 @@ public class LightControl implements SensorEventListener {
             Settings.System.putInt(cResolver, Settings.System.SCREEN_BRIGHTNESS, convertToPWM(brightness));
         } catch (Exception ignored) { }
 
-        if (lightService.isDebugEnabled()) {
+        if (MainActivity.debugEnabled) {
             Log.d(TAG, String.format("Updating: %s:%s", luxValue, brightness));
         }
     }

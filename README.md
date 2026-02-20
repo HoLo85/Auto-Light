@@ -1,6 +1,7 @@
 # Auto Light: Precision Brightness Control
 
-Auto Light is a specialized replacement for the standard Android adaptive brightness feature. Designed for users who demand absolute control, this app provides a custom-tailored brightness curve based on your specific environment.
+Auto Light is a specialized replacement for the standard Android adaptive brightness feature. 
+Designed for users who demand absolute control, this app provides a custom-tailored brightness curve based on your specific environment.
 
 This is a power-user tool that may require additionally manual configuration to function effectively.
 
@@ -8,15 +9,24 @@ For a proper function, it requires to disable the built-in Android Adaptive Brig
 
 ## How It Works
 
-The app utilizes a four-point non-linear mapping model to create a smooth brightness curve. If the predefined settings do not meet your requirements, it allows you to set intermediate points for four distinct ambient light levels and their corresponding intensities. The app then calculates the optimal intermediate values to ensure a smooth, predictable transition.
+The app utilizes a four-point non-linear mapping model to create a smooth brightness curve. 
+If the predefined settings do not meet your requirements, it allows you to set intermediate points for four distinct ambient light levels and their corresponding intensities. 
+The app then calculates the optimal intermediate values to ensure a smooth, predictable transition.
 
-<div align="center">
-<img src="https://github.com/The-First-King/Auto-Light/blob/master/metadata/en-US/images/phoneScreenshots/01.png?raw=true" alt="App settings" width="405" />
-</div>
+<img src="./metadata/en-US/images/phoneScreenshots/02.png" alt="App settings" width="290" height="545" />
 
-The main intended working mode is “On screen unlock/rotate” where the app captures ambient light data only during specific triggers (like unlocking or rotating). This sets your brightness once, preventing the “flickering” or “hunting” common with standard auto-brightness.
+Working modes:
+* **On screen unlock/rotate**: update brightness when screen is turned on or device is rotated
+* **Portrait only**: update brightness once when rotated into portrait mode
+* **Landscape only**: update brightness once when rotated into landscape mode
+* **Always**: read and update brightness always when screen is active
 
-The Auto Light app utilizes Android’s notification system to ensure stable background performance. Since the app does not send active alerts or messages, you may choose to disable notifications in your Android system settings without affecting core functionality. To do this within the app, tap the **three dots** in the top-right corner, go to **Settings**, and ensure **Notifications** is toggled off.
+The main intended working mode is “On screen unlock/rotate” where the app captures ambient light data only during specific triggers (like unlocking or rotating).
+This sets your brightness once, preventing the “flickering” or “hunting” common with standard auto-brightness.
+
+The Auto Light app utilizes Android’s notification system to ensure stable background performance. 
+Since the app does not send active alerts or messages, you may choose to disable notifications in your Android system settings without affecting core functionality. 
+To do this within the app, tap the **three dots** in the top-right corner, go to **Settings**, and ensure **Notifications** is toggled off.
 
 ## Permissions & Privacy
 

@@ -36,11 +36,12 @@ public class LightControl implements SensorEventListener {
     private boolean landscape = false;
     private boolean needsImmediateUpdate = false;
 
-    private float lux = 0;
+    private float lastLux = 0;
+    private float rawLux = 0;
 
     // Window smoothing settings
     private final ArrayDeque<SensorReading> buffer = new ArrayDeque<>();
-    private static final long WINDOW_MS = 3000;
+    private static final long WINDOW_MS = 2000;
 
     // Hysteresis
     private static final float HYSTERESIS_THRESHOLD = 0.15f;
@@ -67,22 +68,21 @@ public class LightControl implements SensorEventListener {
             return;
         }
 
-        sendBroadcastToService(getLiveBrightnessData());
-
-        float rawLux = event.values[0];
+        rawLux = event.values[0];
         long now = SystemClock.elapsedRealtime();
 
-        buffer.addLast(new SensorReading(now, rawLux));
+        sendBroadcastToService(getLiveBrightnessData());
+
+        buffer.add(new SensorReading(now, rawLux));
         rollingSum += rawLux;
 
         while (!buffer.isEmpty() && (now - buffer.peekFirst().time) > WINDOW_MS) {
-            SensorReading old = buffer.removeFirst();
-            rollingSum -= old.value;
+            rollingSum -= buffer.removeFirst().value;
         }
 
         if (needsImmediateUpdate || sett.mode == Constants.WORK_MODE.UNLOCK) {
-            lux = rawLux;
-            setBrightness((int) lux);
+            lastLux = rawLux;
+            setBrightness((int) lastLux);
 
             if (sett.mode == Constants.WORK_MODE.UNLOCK) {
                 needsImmediateUpdate = false;
@@ -109,10 +109,9 @@ public class LightControl implements SensorEventListener {
     public void startListening() {
 
         boolean shouldActivate = switch (sett.mode) {
-            case ALWAYS -> true;
+            case ALWAYS, UNLOCK -> true;
             case LANDSCAPE -> landscape || needsImmediateUpdate;
             case PORTRAIT -> !landscape || needsImmediateUpdate;
-            case UNLOCK -> true;
         };
 
         if (!shouldActivate) {
@@ -165,7 +164,17 @@ public class LightControl implements SensorEventListener {
         startListening();
     }
 
-    public int getLastSensorValue() { return (int) lux; }
+    /**
+     * Get last stored lux value used for calculating brightness.
+     * @return last lux level
+     */
+    public int getLastSensorValue() { return (int) lastLux; }
+
+    /**
+     * Get current lux value read from sensor
+     * @return raw lux level
+     */
+    public int getRawSensorValue() { return (int) rawLux; }
 
     /**
      * Read current display brightnes set in system.
@@ -180,7 +189,7 @@ public class LightControl implements SensorEventListener {
     //Post token to observers
     public String[] getLiveBrightnessData() {
         return new String[]{
-                String.valueOf(getLastSensorValue()),
+                String.valueOf(getRawSensorValue()),
                 String.valueOf(getDisplayBrightness())
         };
     }
@@ -190,8 +199,8 @@ public class LightControl implements SensorEventListener {
 
         // First apply: use last sample immediately
         if (lastAppliedLux == -1f) {
-            lux = buffer.peekLast().value;
-            applyAndRecord(lux);
+            lastLux = buffer.peekLast().value;
+            applyAndRecord(lastLux);
             return;
         }
 
@@ -200,8 +209,8 @@ public class LightControl implements SensorEventListener {
 
         // update if diff > 15% of lastAppliedLux OR diff > 5
         if (diff > (lastAppliedLux * HYSTERESIS_THRESHOLD) || diff > 5f) {
-            lux = averageLux;
-            applyAndRecord(lux);
+            lastLux = averageLux;
+            applyAndRecord(lastLux);
         }
     }
 

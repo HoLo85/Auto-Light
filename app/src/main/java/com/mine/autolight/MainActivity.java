@@ -35,7 +35,8 @@ public class MainActivity extends Activity {
 
     private MySettings sett;
 
-    private boolean isDialogShown = false;
+    private boolean isDialogShown;
+    private boolean debugEnabled;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -152,6 +153,12 @@ public class MainActivity extends Activity {
             openAppSettings();
             return true;
         }
+        if (item.getItemId() == R.id.action_debug) {
+            debugEnabled = item.isChecked();
+            item.setChecked(debugEnabled);
+            sendBroadcastToService(Constants.SERVICE_INTENT_DEBUG_SET);
+            return true;
+        }
         return super.onOptionsItemSelected(item);
     }
 
@@ -243,17 +250,21 @@ public class MainActivity extends Activity {
     }
 
     private void registerReceiver(boolean register) {
-        if (register) {
-            IntentFilter light = new IntentFilter();
-            light.addAction(Constants.SERVICE_INTENT_SENSOR);
-            light.addAction(Constants.SERVICE_INTENT_STATUS);
-            registerReceiver(sensorBroadcastReceiver, light, Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            unregisterReceiver(sensorBroadcastReceiver);
+        try {
+            if (register) {
+                IntentFilter light = new IntentFilter();
+                light.addAction(Constants.SERVICE_INTENT_SENSOR);
+                light.addAction(Constants.SERVICE_INTENT_STATUS);
+                registerReceiver(sensorBroadcastReceiver, light, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                unregisterReceiver(sensorBroadcastReceiver);
+            }
+        } catch (IllegalArgumentException e) {
+            Log.w(TAG, "Problem while de-/registering auto light receiver, receiver may have been already de-/registered.");
         }
     }
 
-    private void sendBroadcastToService(int payload) {
+    private void sendBroadcastToService(String payload) {
         Intent i = new Intent(Constants.SERVICE_INTENT_ACTION);
         i.setPackage(getPackageName());
         i.putExtra(Constants.SERVICE_INTENT_EXTRA, payload);
@@ -342,12 +353,16 @@ public class MainActivity extends Activity {
         if (LightService.isRunning && LightService.lightControl != null) {
             txtCurAmbience.setText(brightnessData[0]);
             txtCurDisplay.setText(brightnessData[1]);
-            Log.d(TAG, String.format( "Refresh: %s:%s", brightnessData[0], brightnessData[1]));
+            if (debugEnabled) {
+                Log.d(TAG, String.format("Refresh: %s:%s", brightnessData[0], brightnessData[1]));
+            }
         }
     }
 
     private void refreshServiceStatus(final int status) {
         displayServiceStatus(status);
-        Log.d(TAG, String.format( "Status: %s", status));
+        if (debugEnabled) {
+            Log.d(TAG, String.format("Status: %s", status));
+        }
     }
 }

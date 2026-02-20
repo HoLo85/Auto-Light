@@ -7,11 +7,13 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.hardware.display.DisplayManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.provider.Settings;
 import android.util.Log;
+import android.view.Display;
 
 import java.util.ArrayDeque;
 
@@ -21,6 +23,7 @@ public class LightControl implements SensorEventListener {
 
     private final LightService lightService;
     private final SensorManager sMgr;
+    private final DisplayManager dMgr;
     private final Sensor lightSensor;
     private final MySettings sett;
     private final ContentResolver cResolver;
@@ -51,6 +54,7 @@ public class LightControl implements SensorEventListener {
         cResolver = service.getApplicationContext().getContentResolver();
         sMgr = (SensorManager) service.getApplicationContext().getSystemService(Context.SENSOR_SERVICE);
         lightSensor = sMgr.getDefaultSensor(Sensor.TYPE_LIGHT);
+        dMgr = (DisplayManager) service.getApplicationContext().getSystemService(Context.DISPLAY_SERVICE);
     }
 
     @Override
@@ -58,7 +62,10 @@ public class LightControl implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if (event.sensor.getType() != Sensor.TYPE_LIGHT) return;
+        if (dMgr.getDisplay(0).getState() != Display.STATE_ON ||
+            event.sensor.getType() != Sensor.TYPE_LIGHT) {
+            return;
+        }
 
         sendBroadcastToService(getLiveBrightnessData());
 
@@ -238,7 +245,9 @@ public class LightControl implements SensorEventListener {
             Settings.System.putInt(cResolver, Settings.System.SCREEN_BRIGHTNESS, convertToPWM(brightness));
         } catch (Exception ignored) { }
 
-        Log.d(TAG, String.format( "Updating: %s:%s", luxValue, brightness));
+        if (lightService.isDebugEnabled()) {
+            Log.d(TAG, String.format("Updating: %s:%s", luxValue, brightness));
+        }
     }
 
     private static class SensorReading {

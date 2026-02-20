@@ -377,11 +377,11 @@
             android:orientation="vertical">
 
             <Switch
-                android:id="@+id/sw_work_0"
+                android:id="@+id/sw_work_3"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:height="50dp"
-                android:text="@string/mode_always"
+                android:text="@string/mode_unlock"
                 android:textSize="18sp" />
 
             <Switch
@@ -401,11 +401,11 @@
                 android:textSize="18sp" />
 
             <Switch
-                android:id="@+id/sw_work_3"
+                android:id="@+id/sw_work_0"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:height="50dp"
-                android:text="@string/mode_unlock"
+                android:text="@string/mode_always"
                 android:textSize="18sp" />
 
             <View

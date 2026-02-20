@@ -20,8 +20,8 @@ public final class Constants {
     public static final String SERVICE_INTENT_EXTRA = "com.mine.autolight.EXTRA_COMMAND";
     public static final String SERVICE_INTENT_SENSOR = "com.mine.autolight.SENSOR_COMMAND";
     public static final String SERVICE_INTENT_STATUS = "com.mine.autolight.SERVICE_STATUS";
-
-    public static final int SERVICE_INTENT_PAYLOAD_SET  = 1;
+    public static final String SERVICE_INTENT_PAYLOAD_SET = "update_settings";
+    public static final String SERVICE_INTENT_DEBUG_SET = "switch_debug";
 
     // Keep the user-enabled preference centralized
     public static final String PREFS_NAME = "AutoLightPrefs";

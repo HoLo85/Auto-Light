@@ -30,22 +30,19 @@ public class LightControl implements SensorEventListener {
 
     // Used only to schedule stopListening after "pause" in non-always modes
     private final Handler delayer = new Handler(Looper.getMainLooper());
-    private static final long PAUSE = 2500;
 
     private boolean onListen = false;
     private boolean landscape = false;
     private boolean needsImmediateUpdate = false;
-
     private float lastLux = 0;
     private float rawLux = 0;
-
-    // Window smoothing settings
-    private final ArrayDeque<SensorReading> buffer = new ArrayDeque<>();
-    private static final long WINDOW_MS = 2000;
-
+    private static final long WINDOW_MS = 3000;
+    private static final long PAUSE = 2500;
     // Hysteresis
     private static final float HYSTERESIS_THRESHOLD = 0.15f;
 
+    // Window smoothing settings
+    private final ArrayDeque<SensorReading> buffer = new ArrayDeque<>();
     private float lastAppliedLux = -1f;
     private float rollingSum = 0f;
 
@@ -70,8 +67,6 @@ public class LightControl implements SensorEventListener {
 
         rawLux = event.values[0];
         long now = SystemClock.elapsedRealtime();
-
-        sendBroadcastToService(getLiveBrightnessData());
 
         buffer.add(new SensorReading(now, rawLux));
         rollingSum += rawLux;
@@ -98,11 +93,7 @@ public class LightControl implements SensorEventListener {
 
     public void prepareForScreenOn() {
         needsImmediateUpdate = true;
-        lastAppliedLux = -1f;
-
-        buffer.clear();
-        rollingSum = 0f;
-
+        resetSmoothingData(false);
         startListening();
     }
 
@@ -121,9 +112,7 @@ public class LightControl implements SensorEventListener {
 
             if (!onListen && lightSensor != null) {
                 if (sett.mode == Constants.WORK_MODE.UNLOCK || needsImmediateUpdate) {
-                    lastAppliedLux = -1f;
-                    buffer.clear();
-                    rollingSum = 0f;
+                    resetSmoothingData(false);
                 }
                 sMgr.registerListener(this, lightSensor, SensorManager.SENSOR_DELAY_NORMAL);
                 onListen = true;
@@ -207,16 +196,24 @@ public class LightControl implements SensorEventListener {
         float averageLux = rollingSum / buffer.size();
         float diff = Math.abs(averageLux - lastAppliedLux);
 
-        // update if diff > 15% of lastAppliedLux OR diff > 5
-        if (diff > (lastAppliedLux * HYSTERESIS_THRESHOLD) || diff > 5f) {
+        if (diff > (lastAppliedLux * HYSTERESIS_THRESHOLD)) {
             lastLux = averageLux;
             applyAndRecord(lastLux);
+            resetSmoothingData(true);
         }
     }
 
     private void applyAndRecord(float luxVal) {
         setBrightness((int) luxVal);
         lastAppliedLux = luxVal;
+    }
+
+    private void resetSmoothingData(boolean keepLastAppliedLux) {
+        if (!keepLastAppliedLux) {
+            lastAppliedLux = -1f;
+        }
+        buffer.clear();
+        rollingSum = 0f;
     }
 
     private void scheduleSuspend() {
@@ -252,11 +249,11 @@ public class LightControl implements SensorEventListener {
 
         try {
             Settings.System.putInt(cResolver, Settings.System.SCREEN_BRIGHTNESS, convertToPWM(brightness));
+            sendBroadcastToService(getLiveBrightnessData());
+            if (MainActivity.debugEnabled) {
+                Log.d(TAG, String.format("Updating: %s:%s", luxValue, brightness));
+            }
         } catch (Exception ignored) { }
-
-        if (MainActivity.debugEnabled) {
-            Log.d(TAG, String.format("Updating: %s:%s", luxValue, brightness));
-        }
     }
 
     private static class SensorReading {

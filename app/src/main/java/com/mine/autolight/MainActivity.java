@@ -43,12 +43,11 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        sett = new MySettings(this);
-
-        btnStart = findViewById(R.id.btn_start_stop);
         txtCurAmbience = findViewById(R.id.txt_current_ambient);
         txtCurDisplay = findViewById(R.id.txt_current_display);
 
+        // get start button from layout and add listener to toggle service
+        btnStart = findViewById(R.id.btn_start_stop);
         btnStart.setOnClickListener(v -> {
             if (isServiceRunning()) {
                 setServiceEnabledPref(false);
@@ -81,9 +80,12 @@ public class MainActivity extends Activity {
         etBrightness4 = findViewById(R.id.et_brightness_value_4);
         etBrightness4.setFilters(new InputFilter[]{new InputFilterMinMax(1, 100)});
 
-        refillUserSettings();
+        // read stored settings and update fields with stored values
+        sett = new MySettings(this);
+        restoreLastSettings();
 
-        Button btnSave = findViewById(R.id.btn_save_settings);
+        // add listener for save button to update settings with new values
+        final Button btnSave = findViewById(R.id.btn_save_settings);
         btnSave.setOnClickListener(v -> {
             try {
                 sett.l1 = Integer.parseInt(etSensor1.getText().toString());
@@ -111,15 +113,16 @@ public class MainActivity extends Activity {
             }
         });
 
-        final Switch swWAlways = findViewById(R.id.sw_work_0);
-        final Switch swWPortrait = findViewById(R.id.sw_work_1);
-        final Switch swWLandscape = findViewById(R.id.sw_work_2);
-        final Switch swWUnlock = findViewById(R.id.sw_work_3);
+        // get switches from layout and set last active mode
+        final Switch swWAlways = findViewById(R.id.sw_wm_always);
+        final Switch swWPortrait = findViewById(R.id.sw_wm_portrait);
+        final Switch swWLandscape = findViewById(R.id.sw_wm_landscape);
+        final Switch swWUnlock = findViewById(R.id.sw_wm_unlock);
 
         switch (sett.mode) {
             case UNLOCK -> {
-                swWAlways.setActivated(true);
-                swWAlways.setChecked(true);
+                swWUnlock.setActivated(true);
+                swWUnlock.setChecked(true);
             }
             case PORTRAIT -> {
                 swWPortrait.setActivated(true);
@@ -130,8 +133,8 @@ public class MainActivity extends Activity {
                 swWLandscape.setChecked(true);
             }
             case ALWAYS -> {
-                swWUnlock.setActivated(true);
-                swWUnlock.setChecked(true);
+                swWAlways.setActivated(true);
+                swWAlways.setChecked(true);
             }
             default -> {
                 // no default for now
@@ -166,15 +169,18 @@ public class MainActivity extends Activity {
     public void onResume() {
         super.onResume();
 
+        // check if required permissions are set
         if (checkAndRequestPermissions()) {
             if (!isServiceRunning() && getServiceEnabledPref()) {
                 runService();
             }
             displayServiceStatus(isServiceRunning() ? Constants.SERVICE_STATUS_RUNNING : Constants.SERVICE_STATUS_STOPPED);
-        }
 
-        // register receiver for messages from lightService
-        registerReceiver(true);
+            // register receiver for messages from lightService
+            registerReceiver(true);
+        } else {
+            Toast.makeText(this, "Check permissions for this app!", Toast.LENGTH_LONG).show();
+        }
     }
 
     @Override
@@ -332,7 +338,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void refillUserSettings() {
+    private void restoreLastSettings() {
         etSensor1.setText(String.valueOf(sett.l1));
         etSensor2.setText(String.valueOf(sett.l2));
         etSensor3.setText(String.valueOf(sett.l3));
